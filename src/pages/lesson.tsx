@@ -1,7 +1,7 @@
 import type { NextPage } from "next";
 import Image from "next/image";
 import Link from "next/link";
-import React, { useRef, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import {
   AppleSvg,
   BigCloseSvg,
@@ -18,26 +18,49 @@ import {
 import womanPng from "../../public/woman.png";
 import { useBoundStore } from "~/hooks/useBoundStore";
 import { useRouter } from "next/router";
+import { doc, getDoc, updateDoc, setDoc, increment } from "firebase/firestore";
+import { db } from "../lib/firebase";
 
-const lessonProblem1 = {
+// Problem type definitions
+type SelectProblem = {
+  type: "SELECT_1_OF_3";
+  question: string;
+  answers: { icon: JSX.Element; name: string }[];
+  correctAnswer: number;
+};
+
+type WriteProblem = {
+  type: "WRITE_IN_ENGLISH";
+  question: string;
+  answerTiles: readonly string[] | string[];
+  correctAnswer: readonly number[] | number[];
+};
+
+type Problem = SelectProblem | WriteProblem;
+
+const defaultLessonProblem1: SelectProblem = {
   type: "SELECT_1_OF_3",
-  question: `Which one of these is "the apple"?`,
+  question: `Which one of these is " apple"?`,
   answers: [
-    { icon: <AppleSvg />, name: "la manzana" },
+    { icon: <AppleSvg />, name: "l manzana" },
     { icon: <BoySvg />, name: "el niño" },
     { icon: <WomanSvg />, name: "la mujer" },
   ],
   correctAnswer: 0,
-} as const;
+};
+const iconMap: Record<string, JSX.Element> = {
+  AppleSvg: <AppleSvg />,
+  BoySvg: <BoySvg />,
+  WomanSvg: <WomanSvg />,
+};
 
-const lessonProblem2 = {
+const lessonProblem2: WriteProblem = {
   type: "WRITE_IN_ENGLISH",
   question: "El niño",
   answerTiles: ["woman", "milk", "water", "I", "The", "boy"],
   correctAnswer: [4, 5],
 } as const;
 
-const lessonProblems = [lessonProblem1, lessonProblem2];
 
 const numbersEqual = (a: readonly number[], b: readonly number[]): boolean => {
   return a.length === b.length && a.every((_, i) => a[i] === b[i]);
@@ -58,6 +81,94 @@ const formatTime = (timeMs: number): string => {
 
 const Lesson: NextPage = () => {
   const router = useRouter();
+  const { unit, number } = router.query as { unit?: string; number?: string };
+  useEffect(() => {
+    if (!router.isReady) return;
+    
+    const fastForward = router.query["fast-forward"] as string | undefined;
+    if (unit || number) {
+      console.log("Lesson route params:", { unit, number });
+    }
+    if (fastForward) {
+      console.log("Fast-forward to unit:", fastForward);
+    }
+  }, [number, unit, router.isReady, router.query]);
+
+
+  // Firebase-loaded problem state, initialized with defaults
+  const [lessonProblem1, setLessonProblem1] = useState<SelectProblem>(
+    defaultLessonProblem1,
+  );
+  const [lessonProblem2State, setLessonProblem2State] = useState<WriteProblem>(
+    lessonProblem2,
+  );
+  const lastRandomIdRef = useRef<string | null>(null);
+
+  const fetchQuestion = React.useCallback(async () => {
+    const MAX_QUESTION_ID = 5;
+    let candidate = Math.floor(Math.random() * MAX_QUESTION_ID) + 1; // 1..5
+    const last = lastRandomIdRef.current
+      ? parseInt(lastRandomIdRef.current, 10)
+      : null;
+    if (MAX_QUESTION_ID > 1 && last !== null && candidate === last) {
+      // pick the next ID in a ring to avoid repetition
+      candidate = (candidate % MAX_QUESTION_ID) + 1;
+    }
+    const randomId = String(candidate);
+    const docRef = doc(db, "questions", randomId);
+    const docSnap = await getDoc(docRef);
+
+    if (docSnap.exists()) {
+      lastRandomIdRef.current = randomId;
+      const data = docSnap.data() as any;
+
+      if (data.type === "SELECT_1_OF_3") {
+        console.log(data);
+        // transform icon strings -> components
+        const raw = data as {
+          question: string;
+          answers: { icon: keyof typeof iconMap; name: string }[];
+          correctAnswer: number;
+        };
+
+        const updatedLessonProblem1: SelectProblem = {
+          type: "SELECT_1_OF_3",
+          question: raw.question,
+          answers: raw.answers.map((ans) => ({
+            name: ans.name,
+            icon: iconMap[ans.icon] ?? <></>,
+          })),
+          correctAnswer: raw.correctAnswer,
+        };
+
+        setLessonProblem1(updatedLessonProblem1);
+        setLessonProblem(0);
+      } else if (data.type === "WRITE_IN_ENGLISH") {
+        console.log(data);
+        const raw = data as {
+          question: string;
+          answerTiles: string[];
+          correctAnswer: number[];
+        };
+        const updatedLessonProblem2: WriteProblem = {
+          type: "WRITE_IN_ENGLISH",
+          question: raw.question,
+          answerTiles: raw.answerTiles,
+          correctAnswer: raw.correctAnswer,
+        };
+        setLessonProblem2State(updatedLessonProblem2);
+        setLessonProblem(1);
+      }
+    } else {
+      alert("No question found");
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchQuestion();
+  }, [fetchQuestion]);
+
+  const lessonProblems: Problem[] = [lessonProblem1, lessonProblem2State];
 
   const [lessonProblem, setLessonProblem] = useState(0);
   const [correctAnswerCount, setCorrectAnswerCount] = useState(0);
@@ -73,10 +184,10 @@ const Lesson: NextPage = () => {
 
   const [questionResults, setQuestionResults] = useState<QuestionResult[]>([]);
   const [reviewLessonShown, setReviewLessonShown] = useState(false);
-
+  
   const problem = lessonProblems[lessonProblem] ?? lessonProblem1;
 
-  const totalCorrectAnswersNeeded = 2;
+  const totalCorrectAnswersNeeded = 5;
 
   const [isStartingLesson, setIsStartingLesson] = useState(true);
   const hearts =
@@ -104,12 +215,12 @@ const Lesson: NextPage = () => {
         yourResponse:
           problem.type === "SELECT_1_OF_3"
             ? problem.answers[selectedAnswer ?? 0]?.name ?? ""
-            : selectedAnswers.map((i) => problem.answerTiles[i]).join(" "),
+            : selectedAnswers.map((i: number) => problem.answerTiles[i]).join(" "),
         correctResponse:
           problem.type === "SELECT_1_OF_3"
-            ? problem.answers[problem.correctAnswer].name
+            ? problem.answers[problem.correctAnswer]?.name ?? ""
             : problem.correctAnswer
-                .map((i) => problem.answerTiles[i])
+                .map((i: number) => problem.answerTiles[i])
                 .join(" "),
       },
     ]);
@@ -119,7 +230,8 @@ const Lesson: NextPage = () => {
     setSelectedAnswer(null);
     setSelectedAnswers([]);
     setCorrectAnswerShown(false);
-    setLessonProblem((x) => (x + 1) % lessonProblems.length);
+    // Fetch a new question instead of cycling the local list
+    fetchQuestion();
     endTime.current = Date.now();
   };
 
@@ -147,6 +259,7 @@ const Lesson: NextPage = () => {
     !correctAnswerShown &&
     correctAnswerCount >= totalCorrectAnswersNeeded
   ) {
+    
     return (
       <LessonFastForwardEndPass
         unitNumber={unitNumber}
@@ -443,7 +556,7 @@ const ProblemSelect1Of3 = ({
   onSkip,
   hearts,
 }: {
-  problem: typeof lessonProblem1;
+  problem: SelectProblem;
   correctAnswerCount: number;
   totalCorrectAnswersNeeded: number;
   selectedAnswer: number | null;
@@ -502,7 +615,7 @@ const ProblemSelect1Of3 = ({
       </div>
 
       <CheckAnswer
-        correctAnswer={answers[correctAnswer].name}
+        correctAnswer={answers[correctAnswer]?.name ?? ""}
         correctAnswerShown={correctAnswerShown}
         isAnswerCorrect={isAnswerCorrect}
         isAnswerSelected={selectedAnswer !== null}
@@ -534,7 +647,7 @@ const ProblemWriteInEnglish = ({
   onSkip,
   hearts,
 }: {
-  problem: typeof lessonProblem2;
+  problem: WriteProblem;
   correctAnswerCount: number;
   totalCorrectAnswersNeeded: number;
   selectedAnswers: number[];
@@ -665,12 +778,32 @@ const LessonComplete = ({
   const router = useRouter();
   const isPractice = "practice" in router.query;
 
-  const increaseXp = useBoundStore((x) => x.increaseXp);
-  const addToday = useBoundStore((x) => x.addToday);
-  const increaseLingots = useBoundStore((x) => x.increaseLingots);
-  const increaseLessonsCompleted = useBoundStore(
-    (x) => x.increaseLessonsCompleted,
-  );
+  const username = useBoundStore((x) => x.username) || "guest";
+  const saveProgress = async () => {
+    const ref = doc(db, "userProgress", username);
+    const lingotsEarned = isPractice ? 0 : 1;
+    const lessonsDelta = isPractice ? 0 : 1;
+    try {
+      await updateDoc(ref, {
+        xp: increment(correctAnswerCount),
+        lingots: increment(lingotsEarned),
+        lessonsCompleted: increment(lessonsDelta),
+        updated_at: Date.now(),
+      });
+    } catch (e) {
+      // If updateDoc failed due to missing doc, create it with initial values
+      await setDoc(
+        ref,
+        {
+          xp: correctAnswerCount,
+          lingots: lingotsEarned,
+          lessonsCompleted: lessonsDelta,
+          updated_at: Date.now(),
+        },
+        { merge: true },
+      );
+    }
+  };
   return (
     <div className="flex min-h-screen flex-col gap-5 px-4 py-5 sm:px-0 sm:py-0">
       <div className="flex grow flex-col items-center justify-center gap-8 font-bold">
@@ -717,12 +850,7 @@ const LessonComplete = ({
             }
             href="/learn"
             onClick={() => {
-              increaseXp(correctAnswerCount);
-              addToday();
-              increaseLingots(isPractice ? 0 : 1);
-              if (!isPractice) {
-                increaseLessonsCompleted();
-              }
+              void saveProgress();
             }}
           >
             Continue

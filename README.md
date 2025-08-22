@@ -6,3 +6,4 @@ A simple [Duolingo](https://www.duolingo.com) web app clone written with [React]
 
 <img src="./screenshots/screenshot-mobile.png" alt="Mobile screenshot" />
 <img src="./screenshots/screenshot-desktop.png" alt="Desktop screenshot" />
+# oromif

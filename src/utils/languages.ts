@@ -13,12 +13,20 @@ const languages = [
   { name: "Greek", nativeName: "Ελληνικά", viewBox: "0 924 82 66", code: "el" },
   { name: "English", nativeName: "English", viewBox: "0 0 82 66", code: "en" },
   { name: "Spanish", nativeName: "Español", viewBox: "0 66 82 66", code: "es" },
+
   {
     name: "French",
     nativeName: "Français",
     viewBox: "0 132 82 66",
     code: "fr",
   },
+  {
+    name: "OROMO",
+    nativeName: "Oromiya",
+    viewBox: "0 191 82 66",
+    code: "or",
+  },
+  
   { name: "Hindi", nativeName: "हिंदी", viewBox: "0 1914 82 66", code: "hi" },
   {
     name: "Hungarian",

@@ -1,5 +1,7 @@
 import { type AppType } from "next/dist/shared/lib/utils";
 import Head from "next/head";
+import { GoogleOAuthProvider } from "@react-oauth/google";
+import { env } from "~/env.mjs";
 
 import "~/styles/globals.css";
 
@@ -16,7 +18,9 @@ const MyApp: AppType = ({ Component, pageProps }) => {
         <meta name="theme-color" content="#0A0" />
         <link rel="manifest" href="/app.webmanifest" />
       </Head>
-      <Component {...pageProps} />
+      <GoogleOAuthProvider clientId={env.NEXT_PUBLIC_GOOGLE_CLIENT_ID}>
+        <Component {...pageProps} />
+      </GoogleOAuthProvider>
     </>
   );
 };

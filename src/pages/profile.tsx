@@ -129,6 +129,22 @@ const ProfileStatsSection = () => {
             </span>
           </div>
         </div>
+        <Link className="link-wallet" href="/WalletDashboard">
+          <div className="flex gap-2 rounded-2xl border-2 border-gray-200 p-2 md:gap-3 md:px-6 md:py-4">
+            {streak === 0 ? <EmptyFireSvg /> : <FireSvg />}
+            <div className="flex flex-col">
+              <span
+                className={[
+                  "text-xl font-bold",
+                  streak === 0 ? "text-gray-400" : "",
+                ].join(" ")}
+              >
+                {streak}
+              </span>
+              <span className="text-sm text-gray-400 md:text-base">Balance</span>
+            </div>
+          </div>
+        </Link>
         <div className="flex gap-2 rounded-2xl border-2 border-gray-200 p-2 md:gap-3 md:px-6 md:py-4">
           <LightningProgressSvg size={35} />
           <div className="flex flex-col">

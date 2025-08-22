@@ -2,6 +2,8 @@ import Link from "next/link";
 import { CloseSvg } from "./Svgs";
 import type { ComponentProps } from "react";
 import React, { useEffect, useRef, useState } from "react";
+import { useGoogleLogin } from "@react-oauth/google";
+import type { TokenResponse } from "@react-oauth/google";
 import { useBoundStore } from "~/hooks/useBoundStore";
 import { useRouter } from "next/router";
 
@@ -80,6 +82,10 @@ export const LoginScreen = ({
   const [ageTooltipShown, setAgeTooltipShown] = useState(false);
 
   const nameInputRef = useRef<null | HTMLInputElement>(null);
+  const identityRef = useRef<null | HTMLInputElement>(null); // email (signup) or email/username (login)
+  const passwordRef = useRef<null | HTMLInputElement>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (loginScreenState !== "HIDDEN" && loggedIn) {
@@ -87,15 +93,86 @@ export const LoginScreen = ({
     }
   }, [loginScreenState, loggedIn, setLoginScreenState]);
 
-  const logInAndSetUserProperties = () => {
-    const name =
-      nameInputRef.current?.value.trim() || Math.random().toString().slice(2);
-    const username = name.replace(/ +/g, "-");
-    setUsername(username);
-    setName(name);
+  type ApiUser = { id?: number; username?: string | null; name?: string | null; email?: string | null };
+  type ApiResponse = { ok: boolean; user?: ApiUser; error?: string };
+
+  const applyUserAndProceed = (user: ApiUser) => {
+    const derivedName = user.name || user.email?.split("@")[0] || Math.random().toString().slice(2);
+    const derivedUsername = (user.username || derivedName).replace(/\s+/g, "-");
+    setUsername(derivedUsername);
+    setName(derivedName);
     logIn();
     void router.push("/learn");
   };
+
+  const handleSubmit = async () => {
+    try {
+      setError(null);
+      setLoading(true);
+      const identity = identityRef.current?.value.trim() || "";
+      const password = passwordRef.current?.value || "";
+      const name = nameInputRef.current?.value.trim();
+
+      if (!identity || !password) {
+        setError("Please enter both identity and password");
+        return;
+      }
+
+      if (loginScreenState === "LOGIN") {
+        const body: Record<string, string> = { password };
+        if (identity.includes("@")) body.email = identity.toLowerCase();
+        else body.username = identity.toLowerCase();
+
+        const resp = await fetch("/api/auth/login", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(body),
+        });
+        const data: ApiResponse = await resp.json();
+        if (!resp.ok || !data?.ok) throw new Error(data?.error || "Login failed");
+        applyUserAndProceed(data.user ?? {});
+      } else {
+        // SIGNUP
+        const resp = await fetch("/api/auth/signup", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email: identity.toLowerCase(), password, name }),
+        });
+        const data: ApiResponse = await resp.json();
+        if (!resp.ok || !data?.ok) throw new Error(data?.error || "Signup failed");
+        applyUserAndProceed(data.user ?? {});
+      }
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e ?? "Something went wrong"));
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const googleLogin = useGoogleLogin({
+    flow: "implicit",
+    onSuccess: async (tokenResponse: TokenResponse) => {
+      try {
+        setError(null);
+        setLoading(true);
+        const access_token = tokenResponse.access_token as string | undefined;
+        if (!access_token) throw new Error("No Google access token");
+        const resp = await fetch("/api/auth/google", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ access_token }),
+        });
+        const data: ApiResponse = await resp.json();
+        if (!resp.ok || !data?.ok) throw new Error(data?.error || "Google login failed");
+        applyUserAndProceed(data.user ?? {});
+      } catch (e) {
+        setError(e instanceof Error ? e.message : "Google login error");
+      } finally {
+        setLoading(false);
+      }
+    },
+    onError: () => setError("Google login was cancelled or failed"),
+  });
 
   return (
     <article
@@ -177,12 +254,14 @@ export const LoginScreen = ({
                   ? "Email or username (optional)"
                   : "Email (optional)"
               }
+              ref={identityRef}
             />
             <div className="relative flex grow">
               <input
                 className="grow rounded-2xl border-2 border-gray-200 bg-gray-50 px-4 py-3"
                 placeholder="Password (optional)"
                 type="password"
+                ref={passwordRef}
               />
               {loginScreenState === "LOGIN" && (
                 <div className="absolute bottom-0 right-0 top-0 flex items-center justify-center pr-5">
@@ -196,11 +275,19 @@ export const LoginScreen = ({
               )}
             </div>
           </div>
+          {error && (
+            <p className="text-center text-sm text-red-600">{error}</p>
+          )}
           <button
             className="rounded-2xl border-b-4 border-blue-500 bg-blue-400 py-3 font-bold uppercase text-white transition hover:brightness-110"
-            onClick={logInAndSetUserProperties}
+            onClick={handleSubmit}
+            disabled={loading}
           >
-            {loginScreenState === "LOGIN" ? "Log in" : "Create account"}
+            {loading
+              ? "Please wait..."
+              : loginScreenState === "LOGIN"
+              ? "Log in"
+              : "Create account"}
           </button>
           <div className="flex items-center gap-2">
             <div className="h-[2px] grow bg-gray-300"></div>
@@ -210,13 +297,14 @@ export const LoginScreen = ({
           <div className="flex gap-5">
             <button
               className="flex w-full items-center justify-center gap-2 rounded-2xl border-2 border-b-4 border-gray-200 py-3 font-bold text-blue-900 transition hover:bg-gray-50 hover:brightness-90"
-              onClick={logInAndSetUserProperties}
+              // onClick={logInAndSetUserProperties}
             >
               <FacebookLogoSvg className="h-5 w-5" /> Facebook
             </button>
             <button
               className="flex w-full items-center justify-center gap-2 rounded-2xl border-2 border-b-4 border-gray-200 py-3 font-bold text-blue-600 transition hover:bg-gray-50 hover:brightness-90"
-              onClick={logInAndSetUserProperties}
+              onClick={() => googleLogin()}
+              disabled={loading}
             >
               <GoogleLogoSvg className="h-5 w-5" /> Google
             </button>

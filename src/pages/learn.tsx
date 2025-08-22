@@ -35,6 +35,8 @@ import { LoginScreen, useLoginScreen } from "~/components/LoginScreen";
 import { useBoundStore } from "~/hooks/useBoundStore";
 import type { Tile, TileType, Unit } from "~/utils/units";
 import { units } from "~/utils/units";
+import { db } from "~/lib/firebase";
+import { doc, getDoc, setDoc, updateDoc, increment } from "firebase/firestore";
 
 type TileStatus = "LOCKED" | "ACTIVE" | "COMPLETE";
 
@@ -277,8 +279,10 @@ const TileTooltip = ({
           {description}
         </div>
         {status === "ACTIVE" ? (
+           
           <Link
-            href="/lesson"
+          
+            href={{ pathname: "/lesson", query: { unit: unitNumber, number: index } }}
             className={[
               "flex w-full items-center justify-center rounded-xl border-b-4 border-gray-200 bg-white p-3 uppercase",
               activeTextColor,
@@ -295,7 +299,7 @@ const TileTooltip = ({
           </button>
         ) : (
           <Link
-            href="/lesson"
+            href={{ pathname: "/lesson", query: { unit: unitNumber, number: index } }}
             className="flex w-full items-center justify-center rounded-xl border-b-4 border-yellow-200 bg-white p-3 uppercase text-yellow-400"
           >
             Practice +5 XP
@@ -319,11 +323,51 @@ const UnitSection = ({ unit }: { unit: Unit }): JSX.Element => {
 
   const closeTooltip = useCallback(() => setSelectedTile(null), []);
 
-  const lessonsCompleted = useBoundStore((x) => x.lessonsCompleted);
-  const increaseLessonsCompleted = useBoundStore(
-    (x) => x.increaseLessonsCompleted,
-  );
-  const increaseLingots = useBoundStore((x) => x.increaseLingots);
+  // Firestore-backed progress
+  const username = useBoundStore((x) => x.username) || "guest";
+  const [lessonsCompleted, setLessonsCompleted] = useState<number>(0);
+
+  useEffect(() => {
+    const loadProgress = async () => {
+      try {
+        const ref = doc(db, "userProgress", username);
+        const snap = await getDoc(ref);
+        if (snap.exists()) {
+          const data = snap.data() as { lessonsCompleted?: number };
+          setLessonsCompleted(data.lessonsCompleted ?? 0);
+        } else {
+          // initialize minimal progress document lazily
+          await setDoc(ref, { lessonsCompleted: 0, lingots: 0, xp: 0, updated_at: Date.now() }, { merge: true });
+          setLessonsCompleted(0);
+        }
+      } catch (e) {
+        console.error("Failed to load user progress", e);
+      }
+    };
+    void loadProgress();
+  }, [username]);
+
+  const increaseLessonsCompleted = async (delta = 1) => {
+    try {
+      const ref = doc(db, "userProgress", username);
+      await updateDoc(ref, { lessonsCompleted: increment(delta), updated_at: Date.now() });
+      setLessonsCompleted((v) => v + delta);
+    } catch (e) {
+      // if doc missing, create it
+      const ref = doc(db, "userProgress", username);
+      await setDoc(ref, { lessonsCompleted: delta, lingots: 0, xp: 0, updated_at: Date.now() }, { merge: true });
+      setLessonsCompleted((v) => v + delta);
+    }
+  };
+  const increaseLingots = async (delta = 1) => {
+    try {
+      const ref = doc(db, "userProgress", username);
+      await updateDoc(ref, { lingots: increment(delta), updated_at: Date.now() });
+    } catch (e) {
+      const ref = doc(db, "userProgress", username);
+      await setDoc(ref, { lingots: delta, updated_at: Date.now() }, { merge: true });
+    }
+  };
 
   return (
     <>
@@ -418,8 +462,8 @@ const UnitSection = ({ unit }: { unit: Unit }): JSX.Element => {
                         ].join(" ")}
                         onClick={() => {
                           if (status === "ACTIVE") {
-                            increaseLessonsCompleted(4);
-                            increaseLingots(1);
+                            void increaseLessonsCompleted(4);
+                            void increaseLingots(1);
                           }
                         }}
                         role="button"

@@ -3740,6 +3740,40 @@ export const BoySvg = () => {
     </svg>
   );
 };
+export const OdaaTreeSvg = () => {
+  return (
+    <svg width="212px" height="213px" viewBox="0 0 15 15" className="w-full">
+<rect width="1024" height="170.6667" y="0" fill="#d71a28"/>
+  <rect width="1024" height="170.6667" y="170.6667" fill="#ffffff"/>
+  <rect width="1024" height="170.6667" y="341.3333" fill="#000000"/>
+
+ 
+  <g transform="translate(512,268) scale(2.1)">
+
+    <path d="M-10,52 C-8,30 -3,9 0,0 C3,9 8,30 10,52 Z" fill="#a18f39" stroke="#000" stroke-width="1.5" />
+  
+    <path d="M-76,6 C-78,-9 -63,-20 -47,-26 C-31,-32 -16,-35 0,-36
+             C16,-35 31,-32 47,-26 C63,-20 78,-9 76,6
+             C84,11 88,19 83,29 C79,37 73,41 66,41
+             C61,47 55,50 48,49 C42,48 39,45 34,43
+             C25,42 16,40 6,42 C1,43 -1,45 -6,45
+             C-12,42 -17,41 -26,42 C-31,43 -36,44 -41,45
+             C-46,48 -52,50 -58,49 C-65,48 -70,44 -73,39
+             C-83,34 -87,24 -83,16 C-81,12 -79,9 -76,6 Z"
+          fill="#0c7a3a" stroke="#000" stroke-width="2"/>
+
+  
+    <path d="M0,-36 C-4,-22 -5,-12 -3,-2" fill="none" stroke="#000" stroke-width="2"/>
+    <path d="M0,-4 C4,0 9,2 15,3" fill="none" stroke="#000" stroke-width="2"/>
+    <path d="M-46,-24 C-36,-20 -28,-13 -24,-5 C-22,-1 -18,2 -13,3" fill="none" stroke="#000" stroke-width="2"/>
+    <path d="M46,-24 C36,-20 28,-13 24,-5 C22,-1 18,2 13,3" fill="none" stroke="#000" stroke-width="2"/>
+    <path d="M-60,8 C-50,12 -43,18 -40,26 C-38,30 -33,33 -26,34" fill="none" stroke="#000" stroke-width="2"/>
+    <path d="M60,8 C50,12 43,18 40,26 C38,30 33,33 26,34" fill="none" stroke="#000" stroke-width="2"/>
+    <path d="M-6,45 C-5,38 -2,33 0,31 C2,33 5,38 6,45" fill="none" stroke="#000" stroke-width="2"/>
+  </g>
+  </svg>
+  );
+};
 
 export const WomanSvg = () => {
   return (
