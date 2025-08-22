@@ -42,11 +42,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     );
     const snap = await getDocs(q);
     if (!snap.empty) {
-      const docs = snap.docs;
-      if (docs.length > 0) {
-        const doc = docs[0];
-        const data = doc.data() as { username?: string | null; name?: string | null; email?: string | null };
-        return res.status(200).json({ ok: true, user: { id: doc.id, username: data.username ?? null, name: data.name ?? null, email: data.email ?? null } });
+      const existing = snap.docs.at(0);
+      if (existing) {
+        const data = existing.data() as { username?: string | null; name?: string | null; email?: string | null };
+        return res.status(200).json({ ok: true, user: { id: existing.id, username: data.username ?? null, name: data.name ?? null, email: data.email ?? null } });
       }
     }
 

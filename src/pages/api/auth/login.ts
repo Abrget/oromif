@@ -32,12 +32,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       return res.status(401).json({ error: "Invalid credentials" });
     }
 
-    const docs = snap.docs;
-    if (docs.length === 0) {
+    const first = snap.docs.at(0);
+    if (!first) {
       return res.status(401).json({ error: "Invalid credentials" });
     }
-    const doc = docs[0];
-    const data = doc.data() as { email?: string | null; username?: string | null; name?: string | null; password_hash?: string | null };
+    const data = first.data() as { email?: string | null; username?: string | null; name?: string | null; password_hash?: string | null };
     if (!data.password_hash) {
       return res.status(401).json({ error: "Invalid credentials" });
     }
@@ -45,7 +44,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const ok = await bcrypt.compare(password, data.password_hash);
     if (!ok) return res.status(401).json({ error: "Invalid credentials" });
 
-    return res.status(200).json({ ok: true, user: { id: doc.id, email: data.email ?? null, username: data.username ?? null, name: data.name ?? null } });
+    return res.status(200).json({ ok: true, user: { id: first.id, email: data.email ?? null, username: data.username ?? null, name: data.name ?? null } });
   } catch (err) {
     console.error("/api/auth/login error", err);
     return res.status(500).json({ error: "Internal error" });

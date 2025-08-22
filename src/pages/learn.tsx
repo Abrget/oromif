@@ -34,16 +34,15 @@ import { useRouter } from "next/router";
 import { LoginScreen, useLoginScreen } from "~/components/LoginScreen";
 import { useBoundStore } from "~/hooks/useBoundStore";
 import type { Tile, TileType, Unit } from "~/utils/units";
-import { units } from "~/utils/units";
 import { db } from "~/lib/firebase";
-import { doc, getDoc, setDoc, updateDoc, increment } from "firebase/firestore";
+import { doc, getDoc, setDoc, updateDoc, increment, collection, getDocs, query, orderBy } from "firebase/firestore";
 
 type TileStatus = "LOCKED" | "ACTIVE" | "COMPLETE";
 
-const tileStatus = (tile: Tile, lessonsCompleted: number): TileStatus => {
+const tileStatus = (tile: Tile, lessonsCompleted: number, allUnits: Unit[]): TileStatus => {
   const lessonsPerTile = 4;
   const tilesCompleted = Math.floor(lessonsCompleted / lessonsPerTile);
-  const tiles = units.flatMap((unit) => unit.tiles);
+  const tiles = allUnits.flatMap((unit) => unit.tiles);
   const tileIndex = tiles.findIndex((t) => t === tile);
 
   if (tileIndex < tilesCompleted) {
@@ -204,6 +203,7 @@ const TileTooltip = ({
   description,
   status,
   closeTooltip,
+  allUnits,
 }: {
   selectedTile: number | null;
   index: number;
@@ -212,6 +212,7 @@ const TileTooltip = ({
   description: string;
   status: TileStatus;
   closeTooltip: () => void;
+  allUnits: Unit[];
 }) => {
   const tileTooltipRef = useRef<HTMLDivElement | null>(null);
 
@@ -229,7 +230,7 @@ const TileTooltip = ({
     return () => window.removeEventListener("click", containsTileTooltip, true);
   }, [selectedTile, tileTooltipRef, closeTooltip, index]);
 
-  const unit = units.find((unit) => unit.unitNumber === unitNumber);
+  const unit = allUnits.find((unit) => unit.unitNumber === unitNumber);
   const activeBackgroundColor = unit?.backgroundColor ?? "bg-green-500";
   const activeTextColor = unit?.textColor ?? "text-green-500";
 
@@ -310,7 +311,7 @@ const TileTooltip = ({
   );
 };
 
-const UnitSection = ({ unit }: { unit: Unit }): JSX.Element => {
+const UnitSection = ({ unit, allUnits }: { unit: Unit; allUnits: Unit[] }): JSX.Element => {
   const router = useRouter();
 
   const [selectedTile, setSelectedTile] = useState<null | number>(null);
@@ -379,7 +380,7 @@ const UnitSection = ({ unit }: { unit: Unit }): JSX.Element => {
       />
       <div className="relative mb-8 mt-[67px] flex max-w-2xl flex-col items-center gap-4">
         {unit.tiles.map((tile, i): JSX.Element => {
-          const status = tileStatus(tile, lessonsCompleted);
+          const status = tileStatus(tile, lessonsCompleted, allUnits);
           return (
             <Fragment key={i}>
               {(() => {
@@ -502,6 +503,7 @@ const UnitSection = ({ unit }: { unit: Unit }): JSX.Element => {
                 })()}
                 status={status}
                 closeTooltip={closeTooltip}
+                allUnits={allUnits}
               />
             </Fragment>
           );
@@ -513,6 +515,7 @@ const UnitSection = ({ unit }: { unit: Unit }): JSX.Element => {
 
 const getTopBarColors = (
   scrollY: number,
+  allUnits: Unit[],
 ): {
   backgroundColor: `bg-${string}`;
   borderColor: `border-${string}`;
@@ -525,14 +528,51 @@ const getTopBarColors = (
   if (scrollY < 680) {
     return defaultColors;
   } else if (scrollY < 1830) {
-    return units[1] ?? defaultColors;
+    return allUnits[1]
+      ? {
+          backgroundColor: allUnits[1].backgroundColor,
+          borderColor: allUnits[1].borderColor,
+        }
+      : defaultColors;
   } else {
-    return units[2] ?? defaultColors;
+    return allUnits[2]
+      ? {
+          backgroundColor: allUnits[2].backgroundColor,
+          borderColor: allUnits[2].borderColor,
+        }
+      : defaultColors;
   }
 };
 
 const Learn: NextPage = () => {
   const { loginScreenState, setLoginScreenState } = useLoginScreen();
+
+  // Load units from Firestore
+  const [unitsState, setUnitsState] = useState<Unit[]>([]);
+  const [loadingUnits, setLoadingUnits] = useState(true);
+  useEffect(() => {
+    const loadUnits = async () => {
+      try {
+        const q = query(collection(db, "units"), orderBy("unitNumber", "asc"));
+        const snap = await getDocs(q);
+        if (snap.empty) {
+          // Seed from local data via API, then refetch
+          await fetch("/api/seed/units", { method: "POST" });
+          const snap2 = await getDocs(q);
+          const list2: Unit[] = snap2.docs.map((d) => d.data() as Unit);
+          setUnitsState(list2);
+        } else {
+          const list: Unit[] = snap.docs.map((d) => d.data() as Unit);
+          setUnitsState(list);
+        }
+      } catch (e) {
+        console.error("Failed to load units", e);
+      } finally {
+        setLoadingUnits(false);
+      }
+    };
+    void loadUnits();
+  }, []);
 
   const [scrollY, setScrollY] = useState(0);
   useEffect(() => {
@@ -542,7 +582,7 @@ const Learn: NextPage = () => {
     return () => document.removeEventListener("scroll", updateScrollY);
   }, [scrollY]);
 
-  const topBarColors = getTopBarColors(scrollY);
+  const topBarColors = getTopBarColors(scrollY, unitsState);
 
   return (
     <>
@@ -554,9 +594,13 @@ const Learn: NextPage = () => {
 
       <div className="flex justify-center gap-3 pt-14 sm:p-6 sm:pt-10 md:ml-24 lg:ml-64 lg:gap-12">
         <div className="flex max-w-2xl grow flex-col">
-          {units.map((unit) => (
-            <UnitSection unit={unit} key={unit.unitNumber} />
-          ))}
+          {loadingUnits ? (
+            <div className="p-4 text-center text-gray-500">Loading units…</div>
+          ) : (
+            unitsState.map((unit: Unit) => (
+              <UnitSection unit={unit} allUnits={unitsState} key={unit.unitNumber} />
+            ))
+          )}
           <div className="sticky bottom-28 left-0 right-0 flex items-end justify-between">
             <Link
               href="/lesson?practice"
@@ -674,7 +718,7 @@ const UnitHeader = ({
           <p className="text-lg">{description}</p>
         </div>
         <Link
-          href={`https://duolingo.com/guidebook/${language.code}/${unitNumber}`}
+          href={`/guidebook/${unitNumber}`}
           className={[
             "flex items-center gap-3 rounded-2xl border-2 border-b-4 p-3 transition hover:text-gray-100",
             borderColor,

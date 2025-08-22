@@ -16,6 +16,8 @@ import Link from "next/link";
 import { Flag } from "~/components/Flag";
 import { useBoundStore } from "~/hooks/useBoundStore";
 import { useEffect, useState } from "react";
+import { db } from "~/lib/firebase";
+import { doc, getDoc, setDoc } from "firebase/firestore";
 import { useRouter } from "next/router";
 
 const Profile: NextPage = () => {
@@ -105,9 +107,42 @@ const ProfileTopSection = () => {
 
 const ProfileStatsSection = () => {
   const streak = useBoundStore((x) => x.streak);
-  const totalXp = 125;
-  const league = "Bronze";
-  const top3Finishes = 0;
+  const username = useBoundStore((x) => x.username) || "guest";
+
+  const [totalXp, setTotalXp] = useState<number>(0);
+  const [league, setLeague] = useState<string>("Bronze");
+  const [top3Finishes, setTop3Finishes] = useState<number>(0);
+
+  useEffect(() => {
+    const loadStats = async () => {
+      try {
+        const ref = doc(db, "userProgress", username);
+        const snap = await getDoc(ref);
+        if (snap.exists()) {
+          const data = snap.data() as {
+            xp?: number;
+            league?: string;
+            top3Finishes?: number;
+          };
+          setTotalXp(data.xp ?? 0);
+          setLeague(data.league ?? "Bronze");
+          setTop3Finishes(data.top3Finishes ?? 0);
+        } else {
+          await setDoc(
+            ref,
+            { xp: 0, league: "Bronze", top3Finishes: 0, updated_at: Date.now() },
+            { merge: true },
+          );
+          setTotalXp(0);
+          setLeague("Bronze");
+          setTop3Finishes(0);
+        }
+      } catch (e) {
+        console.error("Failed to load profile stats", e);
+      }
+    };
+    void loadStats();
+  }, [username]);
 
   return (
     <section>
