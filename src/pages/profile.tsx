@@ -19,6 +19,7 @@ import { useEffect, useState } from "react";
 import { db } from "~/lib/firebase";
 import { doc, getDoc, setDoc } from "firebase/firestore";
 import { useRouter } from "next/router";
+import { useTranslation } from "~/hooks/useTranslation";
 
 const Profile: NextPage = () => {
   return (
@@ -41,15 +42,16 @@ const Profile: NextPage = () => {
 export default Profile;
 
 const ProfileTopBar = () => {
+  const t = useTranslation();
   return (
     <div className="fixed left-0 right-0 top-0 flex h-16 items-center justify-between border-b-2 border-gray-200 bg-white px-5 text-xl font-bold text-gray-300 md:hidden">
       <div className="invisible" aria-hidden={true}>
         <SettingsGearSvg />
       </div>
-      <span className="text-gray-400">Profile</span>
+      <span className="text-gray-400">{t.profile.profile}</span>
       <Link href="/settings/account">
         <SettingsGearSvg />
-        <span className="sr-only">Settings</span>
+        <span className="sr-only">{t.profile.settings}</span>
       </Link>
     </div>
   );
@@ -64,6 +66,7 @@ const ProfileTopSection = () => {
   const followingCount = 0;
   const followersCount = 0;
   const language = useBoundStore((x) => x.language);
+  const t = useTranslation();
 
   useEffect(() => {
     if (!loggedIn) {
@@ -84,11 +87,11 @@ const ProfileTopSection = () => {
           </div>
           <div className="flex items-center gap-3">
             <ProfileTimeJoinedSvg />
-            <span className="text-gray-500">{`Joined ${joinedAt}`}</span>
+            <span className="text-gray-500">{t.profile.joined(joinedAt)}</span>
           </div>
           <div className="flex items-center gap-3">
             <ProfileFriendsSvg />
-            <span className="text-gray-500">{`${followingCount} Following / ${followersCount} Followers`}</span>
+            <span className="text-gray-500">{t.profile.followingFollowers(followingCount, followersCount)}</span>
           </div>
         </div>
 
@@ -99,15 +102,17 @@ const ProfileTopSection = () => {
         className="hidden items-center gap-2 self-start rounded-2xl border-b-4 border-blue-500 bg-blue-400 px-5 py-3 font-bold uppercase text-white transition hover:brightness-110 md:flex"
       >
         <EditPencilSvg />
-        Edit profile
+        {t.profile.editProfile}
       </Link>
     </section>
   );
 };
 
 const ProfileStatsSection = () => {
+  const t = useTranslation();
   const streak = useBoundStore((x) => x.streak);
   const username = useBoundStore((x) => x.username) || "guest";
+  const language = useBoundStore((x) => x.language);
 
   const [totalXp, setTotalXp] = useState<number>(0);
   const [league, setLeague] = useState<string>("Bronze");
@@ -116,7 +121,7 @@ const ProfileStatsSection = () => {
   useEffect(() => {
     const loadStats = async () => {
       try {
-        const ref = doc(db, "userProgress", username);
+        const ref = doc(db, "userProgress", username, language.code);
         const snap = await getDoc(ref);
         if (snap.exists()) {
           const data = snap.data() as {
@@ -142,11 +147,11 @@ const ProfileStatsSection = () => {
       }
     };
     void loadStats();
-  }, [username]);
+  }, [username, language.code]);
 
   return (
     <section>
-      <h2 className="mb-5 text-2xl font-bold">Statistics</h2>
+      <h2 className="mb-5 text-2xl font-bold">{t.profile.statistics}</h2>
       <div className="grid grid-cols-2 gap-3">
         <div className="flex gap-2 rounded-2xl border-2 border-gray-200 p-2 md:gap-3 md:px-6 md:py-4">
           {streak === 0 ? <EmptyFireSvg /> : <FireSvg />}
@@ -159,9 +164,7 @@ const ProfileStatsSection = () => {
             >
               {streak}
             </span>
-            <span className="text-sm text-gray-400 md:text-base">
-              Day streak
-            </span>
+            <span className="text-sm text-gray-400 md:text-base">{t.profile.dayStreak}</span>
           </div>
         </div>
         <Link className="link-wallet" href="/WalletDashboard">
@@ -176,7 +179,7 @@ const ProfileStatsSection = () => {
               >
                 {streak}
               </span>
-              <span className="text-sm text-gray-400 md:text-base">Balance</span>
+              <span className="text-sm text-gray-400 md:text-base">{t.profile.balance}</span>
             </div>
           </div>
         </Link>
@@ -184,7 +187,7 @@ const ProfileStatsSection = () => {
           <LightningProgressSvg size={35} />
           <div className="flex flex-col">
             <span className="text-xl font-bold">{totalXp}</span>
-            <span className="text-sm text-gray-400 md:text-base">Total XP</span>
+            <span className="text-sm text-gray-400 md:text-base">{t.profile.totalXp}</span>
           </div>
         </div>
         <div className="flex gap-2 rounded-2xl border-2 border-gray-200 p-2 md:gap-3 md:px-6 md:py-4">
@@ -192,7 +195,7 @@ const ProfileStatsSection = () => {
           <div className="flex flex-col">
             <span className="text-xl font-bold">{league}</span>
             <span className="text-sm text-gray-400 md:text-base">
-              Current league
+              {t.profile.currentLeague}
             </span>
           </div>
         </div>
@@ -207,9 +210,7 @@ const ProfileStatsSection = () => {
             >
               {top3Finishes}
             </span>
-            <span className="text-sm text-gray-400 md:text-base">
-              Top 3 finishes
-            </span>
+            <span className="text-sm text-gray-400 md:text-base">{t.profile.top3Finishes}</span>
           </div>
         </div>
       </div>
@@ -219,9 +220,10 @@ const ProfileStatsSection = () => {
 
 const ProfileFriendsSection = () => {
   const [state, setState] = useState<"FOLLOWING" | "FOLLOWERS">("FOLLOWING");
+  const t = useTranslation();
   return (
     <section>
-      <h2 className="mb-5 text-2xl font-bold">Friends</h2>
+      <h2 className="mb-5 text-2xl font-bold">{t.profile.friends}</h2>
       <div className="rounded-2xl border-2 border-gray-200">
         <div className="flex">
           <button
@@ -233,7 +235,7 @@ const ProfileFriendsSection = () => {
             ].join(" ")}
             onClick={() => setState("FOLLOWING")}
           >
-            Following
+            {t.profile.following}
           </button>
           <button
             className={[
@@ -244,13 +246,11 @@ const ProfileFriendsSection = () => {
             ].join(" ")}
             onClick={() => setState("FOLLOWERS")}
           >
-            Followers
+            {t.profile.followers}
           </button>
         </div>
         <div className="flex items-center justify-center py-10 text-center text-gray-500">
-          {state === "FOLLOWING"
-            ? "Not following anyone yet"
-            : "No followers yet"}
+          {state === "FOLLOWING" ? t.profile.notFollowingYet : t.profile.noFollowersYet}
         </div>
       </div>
     </section>

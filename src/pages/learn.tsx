@@ -36,6 +36,7 @@ import { useBoundStore } from "~/hooks/useBoundStore";
 import type { Tile, TileType, Unit } from "~/utils/units";
 import { db } from "~/lib/firebase";
 import { doc, getDoc, setDoc, updateDoc, increment, collection, getDocs, query, orderBy } from "firebase/firestore";
+import { useTranslation } from "~/hooks/useTranslation";
 
 type TileStatus = "LOCKED" | "ACTIVE" | "COMPLETE";
 
@@ -214,6 +215,7 @@ const TileTooltip = ({
   closeTooltip: () => void;
   allUnits: Unit[];
 }) => {
+  const t = useTranslation();
   const tileTooltipRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
@@ -233,6 +235,7 @@ const TileTooltip = ({
   const unit = allUnits.find((unit) => unit.unitNumber === unitNumber);
   const activeBackgroundColor = unit?.backgroundColor ?? "bg-green-500";
   const activeTextColor = unit?.textColor ?? "text-green-500";
+
 
   return (
     <div
@@ -280,30 +283,28 @@ const TileTooltip = ({
           {description}
         </div>
         {status === "ACTIVE" ? (
-           
           <Link
-          
-            href={{ pathname: "/lesson", query: { unit: unitNumber, number: index } }}
+            href={{ pathname: "/lesson", query: { unit: unitNumber, number: index  } }}
             className={[
               "flex w-full items-center justify-center rounded-xl border-b-4 border-gray-200 bg-white p-3 uppercase",
               activeTextColor,
             ].join(" ")}
           >
-            Start +10 XP
+            {t.learn.startXP}
           </Link>
         ) : status === "LOCKED" ? (
           <button
             className="w-full rounded-xl bg-gray-200 p-3 uppercase text-gray-400"
             disabled
           >
-            Locked
+            {t.learn.locked}
           </button>
         ) : (
           <Link
             href={{ pathname: "/lesson", query: { unit: unitNumber, number: index } }}
             className="flex w-full items-center justify-center rounded-xl border-b-4 border-yellow-200 bg-white p-3 uppercase text-yellow-400"
           >
-            Practice +5 XP
+            {t.learn.practiceXP}
           </Link>
         )}
       </div>
@@ -312,8 +313,10 @@ const TileTooltip = ({
 };
 
 const UnitSection = ({ unit, allUnits }: { unit: Unit; allUnits: Unit[] }): JSX.Element => {
+  const t = useTranslation();
   const router = useRouter();
-
+ const language = useBoundStore((x) => x.language);
+ console.log(language);
   const [selectedTile, setSelectedTile] = useState<null | number>(null);
 
   useEffect(() => {
@@ -331,7 +334,7 @@ const UnitSection = ({ unit, allUnits }: { unit: Unit; allUnits: Unit[] }): JSX.
   useEffect(() => {
     const loadProgress = async () => {
       try {
-        const ref = doc(db, "userProgress", username);
+        const ref = doc(db, "userProgress", username, language.code);
         const snap = await getDoc(ref);
         if (snap.exists()) {
           const data = snap.data() as { lessonsCompleted?: number };
@@ -346,26 +349,26 @@ const UnitSection = ({ unit, allUnits }: { unit: Unit; allUnits: Unit[] }): JSX.
       }
     };
     void loadProgress();
-  }, [username]);
+  }, [username, language.code]);
 
   const increaseLessonsCompleted = async (delta = 1) => {
     try {
-      const ref = doc(db, "userProgress", username);
+      const ref = doc(db, "userProgress", username, language.code);
       await updateDoc(ref, { lessonsCompleted: increment(delta), updated_at: Date.now() });
       setLessonsCompleted((v) => v + delta);
     } catch (e) {
       // if doc missing, create it
-      const ref = doc(db, "userProgress", username);
+      const ref = doc(db, "userProgress", username, language.code);
       await setDoc(ref, { lessonsCompleted: delta, lingots: 0, xp: 0, updated_at: Date.now() }, { merge: true });
       setLessonsCompleted((v) => v + delta);
     }
   };
   const increaseLingots = async (delta = 1) => {
     try {
-      const ref = doc(db, "userProgress", username);
+      const ref = doc(db, "userProgress", username, language.code);
       await updateDoc(ref, { lingots: increment(delta), updated_at: Date.now() });
     } catch (e) {
-      const ref = doc(db, "userProgress", username);
+      const ref = doc(db, "userProgress", username, language.code);
       await setDoc(ref, { lingots: delta, updated_at: Date.now() }, { merge: true });
     }
   };
@@ -413,11 +416,11 @@ const UnitSection = ({ unit, allUnits }: { unit: Unit; allUnits: Unit[] }): JSX.
                       >
                         {tile.type === "fast-forward" && status === "LOCKED" ? (
                           <HoverLabel
-                            text="Jump here?"
+                            text={t.learn.jumpHere}
                             textColor={unit.textColor}
                           />
                         ) : selectedTile !== i && status === "ACTIVE" ? (
-                          <HoverLabel text="Start" textColor={unit.textColor} />
+                          <HoverLabel text={t.learn.start} textColor={unit.textColor} />
                         ) : null}
                         <LessonCompletionSvg
                           lessonsCompleted={lessonsCompleted}
@@ -473,7 +476,7 @@ const UnitSection = ({ unit, allUnits }: { unit: Unit; allUnits: Unit[] }): JSX.
                         aria-label={status === "ACTIVE" ? "Collect reward" : ""}
                       >
                         {status === "ACTIVE" && (
-                          <HoverLabel text="Open" textColor="text-yellow-400" />
+                          <HoverLabel text={t.learn.open} textColor="text-yellow-400" />
                         )}
                         <TileIcon tileType={tile.type} status={status} />
                       </div>
@@ -493,10 +496,10 @@ const UnitSection = ({ unit, allUnits }: { unit: Unit; allUnits: Unit[] }): JSX.
                       return tile.description;
                     case "fast-forward":
                       return status === "LOCKED"
-                        ? "Jump here?"
+                        ? t.learn.jumpHere
                         : tile.description;
                     case "trophy":
-                      return `Unit ${unit.unitNumber} review`;
+                      return `${t.learn.unit(unit.unitNumber)} review`;
                     case "treasure":
                       return "";
                   }
@@ -546,6 +549,7 @@ const getTopBarColors = (
 
 const Learn: NextPage = () => {
   const { loginScreenState, setLoginScreenState } = useLoginScreen();
+  const t = useTranslation();
 
   // Load units from Firestore
   const [unitsState, setUnitsState] = useState<Unit[]>([]);
@@ -595,7 +599,7 @@ const Learn: NextPage = () => {
       <div className="flex justify-center gap-3 pt-14 sm:p-6 sm:pt-10 md:ml-24 lg:ml-64 lg:gap-12">
         <div className="flex max-w-2xl grow flex-col">
           {loadingUnits ? (
-            <div className="p-4 text-center text-gray-500">Loading units…</div>
+            <div className="p-4 text-center text-gray-500">{t.learn.loadingUnits}</div>
           ) : (
             unitsState.map((unit: Unit) => (
               <UnitSection unit={unit} allUnits={unitsState} key={unit.unitNumber} />
@@ -606,7 +610,7 @@ const Learn: NextPage = () => {
               href="/lesson?practice"
               className="absolute left-4 flex h-16 w-16 items-center justify-center rounded-full border-2 border-b-4 border-gray-200 bg-white transition hover:bg-gray-50 hover:brightness-90 md:left-0"
             >
-              <span className="sr-only">Practice exercise</span>
+              <span className="sr-only">{t.learn.practiceExercise}</span>
               <PracticeExerciseSvg className="h-8 w-8" />
             </Link>
             {scrollY > 100 && (
@@ -614,7 +618,7 @@ const Learn: NextPage = () => {
                 className="absolute right-4 flex h-14 w-14 items-center justify-center self-end rounded-2xl border-2 border-b-4 border-gray-200 bg-white transition hover:bg-gray-50 hover:brightness-90 md:right-0"
                 onClick={() => scrollTo(0, 0)}
               >
-                <span className="sr-only">Jump to top</span>
+                <span className="sr-only">{t.learn.jumpToTop}</span>
                 <UpArrowSvg />
               </button>
             )}
@@ -705,6 +709,7 @@ const UnitHeader = ({
   backgroundColor: `bg-${string}`;
   borderColor: `border-${string}`;
 }) => {
+  const t = useTranslation();
   const language = useBoundStore((x) => x.language);
   return (
     <article
@@ -714,7 +719,7 @@ const UnitHeader = ({
     >
       <header className="flex items-center justify-between gap-4 p-4">
         <div className="flex flex-col gap-1">
-          <h2 className="text-2xl font-bold">Unit {unitNumber}</h2>
+          <h2 className="text-2xl font-bold">{t.learn.unit(unitNumber)}</h2>
           <p className="text-lg">{description}</p>
         </div>
         <Link
@@ -726,7 +731,7 @@ const UnitHeader = ({
         >
           <GuidebookSvg />
           <span className="sr-only font-bold uppercase lg:not-sr-only">
-            Guidebook
+            {t.learn.guidebook}
           </span>
         </Link>
       </header>

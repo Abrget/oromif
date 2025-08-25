@@ -20,6 +20,7 @@ import { useBoundStore } from "~/hooks/useBoundStore";
 import { useRouter } from "next/router";
 import { doc, getDoc, updateDoc, setDoc, increment } from "firebase/firestore";
 import { db } from "../lib/firebase";
+import languages from "~/utils/languages";
 
 // Problem type definitions
 type SelectProblem = {
@@ -81,9 +82,15 @@ const formatTime = (timeMs: number): string => {
 
 const Lesson: NextPage = () => {
   const router = useRouter();
+  const language = useBoundStore((x) => x.language);
   const { unit, number } = router.query as { unit?: string; number?: string };
+  const loggedIn = useBoundStore((x) => x.loggedIn);
   useEffect(() => {
-    if (!router.isReady) return;
+  
+    if (!loggedIn) {
+      void router.push("/learn");
+      return;
+    }
     
     const fastForward = router.query["fast-forward"] as string | undefined;
     if (unit || number) {
@@ -92,7 +99,7 @@ const Lesson: NextPage = () => {
     if (fastForward) {
       console.log("Fast-forward to unit:", fastForward);
     }
-  }, [number, unit, router.isReady, router.query]);
+  }, [number, unit, router.isReady, router.query, loggedIn, router]);
 
 
   // Firebase-loaded problem state, initialized with defaults
@@ -115,7 +122,7 @@ const Lesson: NextPage = () => {
       candidate = (candidate % MAX_QUESTION_ID) + 1;
     }
     const randomId = String(candidate);
-    const docRef = doc(db, "questions", randomId);
+    const docRef = doc(db,"lessons","or","questions",randomId);
     const docSnap = await getDoc(docRef);
 
     if (docSnap.exists()) {
@@ -779,8 +786,9 @@ const LessonComplete = ({
   const isPractice = "practice" in router.query;
 
   const username = useBoundStore((x) => x.username) || "guest";
+  const language = useBoundStore((x) => x.language);
   const saveProgress = async () => {
-    const ref = doc(db, "userProgress", username);
+    const ref = doc(db, "userProgress", username , language.code);
     const lingotsEarned = isPractice ? 0 : 1;
     const lessonsDelta = isPractice ? 0 : 1;
     try {

@@ -5,6 +5,8 @@ import React, { useState } from "react";
 import { LanguageDropDown } from "~/components/LanguageDropDown";
 import type { LoginScreenState } from "~/components/LoginScreen";
 import { LoginScreen } from "~/components/LoginScreen";
+import { useTranslation } from "~/hooks/useTranslation";
+import { useBoundStore } from "~/hooks/useBoundStore";
 
 const MenuIconSvg = (props: ComponentProps<"svg">) => {
   return (
@@ -22,6 +24,8 @@ const MenuIconSvg = (props: ComponentProps<"svg">) => {
 };
 
 const ForgotPassword: NextPage = () => {
+  const t = useTranslation();
+  const currentLanguage = useBoundStore((s) => s.language);
   const [loginScreenState, setLoginScreenState] =
     useState<LoginScreenState>("HIDDEN");
   const [mobileMenuShown, setMobileMenuShown] = useState(false);
@@ -38,13 +42,13 @@ const ForgotPassword: NextPage = () => {
               className="rounded-2xl border-b-4 border-blue-300 bg-white px-4 py-2 uppercase text-blue-800 transition hover:brightness-110"
               onClick={() => setLoginScreenState("LOGIN")}
             >
-              Login
+              {t.header.login}
             </button>
             <Link
               href="/register"
               className="rounded-2xl border-b-4 border-green-600 bg-green-500 px-4 py-2 uppercase text-white transition hover:brightness-110"
             >
-              Get started
+              {t.header.getStarted}
             </Link>
           </div>
           <div
@@ -60,16 +64,16 @@ const ForgotPassword: NextPage = () => {
                   className="block min-w-max cursor-pointer rounded-t-2xl px-5 py-2 hover:bg-gray-100"
                   href="/?login"
                 >
-                  Sign in
+                  {t.header.signIn}
                 </Link>
                 <Link
                   className="block min-w-max cursor-pointer border-t-2 border-gray-300 px-5 py-2 hover:bg-gray-100"
                   href="/register"
                 >
-                  Get started
+                  {t.header.getStarted}
                 </Link>
                 <div className="min-w-max cursor-pointer rounded-b-2xl border-t-2 border-gray-300 px-5 py-2 hover:bg-gray-100">
-                  Site language: English
+                  {t.header.siteLanguage}: {currentLanguage.nativeName}
                 </div>
               </div>
             )}
@@ -77,19 +81,15 @@ const ForgotPassword: NextPage = () => {
         </div>
       </header>
       <div className="flex w-full grow flex-col items-center gap-5 px-5 pt-5 sm:w-96 sm:pt-52">
-        <h1 className="text-center text-2xl font-bold text-gray-800">
-          Forgot password
-        </h1>
-        <p className="text-center text-gray-800">
-          We will send you instructions on how to reset your password by email.
-        </p>
+        <h1 className="text-center text-2xl font-bold text-gray-800">{t.forgot.title}</h1>
+        <p className="text-center text-gray-800">{t.forgot.instructions}</p>
         <div className="flex w-full flex-col gap-2">
           <input
             className="w-full rounded-2xl border-2 border-gray-200 bg-gray-50 px-4 py-3"
-            placeholder="Email"
+            placeholder={t.forgot.emailPlaceholder}
           />
           <button className="w-full rounded-2xl border-b-4 border-blue-500 bg-blue-400 py-3 font-bold uppercase text-white transition hover:brightness-110">
-            Submit
+            {t.forgot.submit}
           </button>
         </div>
       </div>

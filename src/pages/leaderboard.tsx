@@ -18,19 +18,16 @@ import dayjs from "dayjs";
 import { useRouter } from "next/router";
 import { useLeaderboardUsers } from "~/hooks/useLeaderboard";
 import Image from "next/image";
+import { useTranslation } from "~/hooks/useTranslation";
 
 const LeaderboardExplanationSection = () => {
+  const t = useTranslation();
   return (
     <article className="relative hidden h-fit w-96 shrink-0 gap-5 rounded-2xl border-2 border-gray-200 p-6 xl:flex">
       <div className="flex flex-col gap-5">
-        <h2 className="font-bold uppercase text-gray-400">
-          What are leaderboards?
-        </h2>
-        <p className="font-bold text-gray-700">Do lessons. Earn XP. Compete.</p>
-        <p className="text-gray-400">
-          Earn XP through lessons, then compete with players in a weekly
-          leaderboard
-        </p>
+        <h2 className="font-bold uppercase text-gray-400">{t.leaderboard.unlockTitle}</h2>
+        <p className="font-bold text-gray-700">{t.leaderboard.topAdvance}</p>
+        <p className="text-gray-400">{t.leaderboard.topAdvance}</p>
       </div>
 
       <div className="w-10 shrink-0"></div>
@@ -117,6 +114,7 @@ const LeaderboardProfile = ({
 const Leaderboard: NextPage = () => {
   const router = useRouter();
   const loggedIn = useBoundStore((x) => x.loggedIn);
+  const t = useTranslation();
 
   const lessonsCompleted = useBoundStore((x) => x.lessonsCompleted);
 
@@ -144,18 +142,16 @@ const Leaderboard: NextPage = () => {
             <>
               <LeaderboardBannerSvg />
               <h1 className="text-center text-2xl font-bold text-gray-700">
-                Unlock Leaderboards!
+                {t.leaderboard.unlockTitle}
               </h1>
               <p className="text-center text-lg text-gray-500">
-                Complete {lessonsRemainingToUnlockLeaderboard} more lesson
-                {lessonsRemainingToUnlockLeaderboard === 1 ? "" : "s"} to start
-                competing
+                {t.leaderboard.unlockDescription(lessonsRemainingToUnlockLeaderboard)}
               </p>
               <Link
                 href="/lesson?practice"
                 className="w-fit rounded-2xl border-2 border-b-4 border-gray-200 px-16 py-2 text-center font-bold uppercase text-blue-400 transition hover:bg-gray-50 hover:brightness-90"
               >
-                Start a lesson
+                {t.leaderboard.startLesson}
               </Link>
               <div className="h-5"></div>
               <LockedLeaderboardSvg />
@@ -174,7 +170,7 @@ const Leaderboard: NextPage = () => {
                 <h1 className="text-2xl font-bold">{leaderboardLeague}</h1>
                 <div className="flex w-full flex-col items-center gap-1 pb-5">
                   <p className="text-lg text-gray-500">
-                    Top 20 advance to the next league
+                    {t.leaderboard.topAdvance}
                   </p>
                   <time className="font-bold text-yellow-400">
                     {timeLeft()}
