@@ -14,7 +14,7 @@ import {
 } from "./Svgs";
 import { Calendar } from "./Calendar";
 import { useBoundStore } from "~/hooks/useBoundStore";
-import { Flag } from "./Flag";
+import { Flag } from "./Local-Flags";
 import type { LoginScreenState } from "./LoginScreen";
 import { LoginScreen } from "./LoginScreen";
 import { useLeaderboardRank } from "~/hooks/useLeaderboard";
