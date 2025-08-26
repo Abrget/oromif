@@ -4,7 +4,7 @@ import type { ComponentProps } from "react";
 import React, { useState } from "react";
 import { useBoundStore } from "~/hooks/useBoundStore";
 import { Calendar } from "./Calendar";
-import { Flag } from "./Flag";
+import { Flag } from "./Local-Flags";
 import {
   FireSvg,
   GemSvg,
