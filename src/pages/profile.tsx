@@ -13,7 +13,7 @@ import {
   SettingsGearSvg,
 } from "~/components/Svgs";
 import Link from "next/link";
-import { Flag } from "~/components/Flag";
+import { Flag } from "~/components/Local-Flags";
 import { useBoundStore } from "~/hooks/useBoundStore";
 import { useEffect, useState } from "react";
 import { db } from "~/lib/firebase";
