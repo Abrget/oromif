@@ -14,11 +14,8 @@ const FirebaseUploader = () => {
   const [jsonText, setJsonText] = useState<string>("");
   const [status, setStatus] = useState<string>("");
 
-  // Change this to 'questions/oromo' if you prefer nested path (see note below)
-  const TARGET_COLLECTION = "questions-oromo";
-
   const getNextId = async (): Promise<number> => {
-    const colRef = collection(db, "lessons", "or", "questions");
+    const colRef = collection(db, "lessons", "am", "questions");
     const snap = await getDocs(query(colRef));
     let maxId = 0;
     snap.forEach((d) => {
@@ -39,7 +36,7 @@ const FirebaseUploader = () => {
       let nextId = await getNextId();
 
       setStatus(`Uploading ${items.length} item(s)…`);
-      const colRef = collection(db, "lessons", "or", "questions");
+      const colRef = collection(db, "lessons", "am", "questions");
 
       for (const item of items) {
         const idStr = String(nextId++);

@@ -14,9 +14,16 @@ const languages = [
     viewBox: "0 1650 82 66",
     code: "am",
   },
+  {
+    name: "English",
+    nativeName: "English",
+    viewBox: "0 0 82 66",
+    code: "en",
+  },
   
-  
-  
+
+ 
+ 
 ] as const;
 
 export default languages;

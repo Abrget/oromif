@@ -21,6 +21,7 @@ import { useRouter } from "next/router";
 import { doc, getDoc, updateDoc, setDoc, increment } from "firebase/firestore";
 import { db } from "../lib/firebase";
 import languages from "~/utils/languages";
+import { LoginScreen, useLoginScreen } from "~/components/LoginScreen";
 
 // Problem type definitions
 type SelectProblem = {
@@ -80,18 +81,17 @@ const formatTime = (timeMs: number): string => {
     .join(":");
 };
 
+
 const Lesson: NextPage = () => {
   const router = useRouter();
   const language = useBoundStore((x) => x.language);
   const { unit, number } = router.query as { unit?: string; number?: string };
   const loggedIn = useBoundStore((x) => x.loggedIn);
-  useEffect(() => {
+  const { loginScreenState, setLoginScreenState } = useLoginScreen();
   
-    if (!loggedIn) {
-      void router.push("/learn");
-      return;
-    }
-    
+  useEffect(() => {
+   
+   
     const fastForward = router.query["fast-forward"] as string | undefined;
     if (unit || number) {
       console.log("Lesson route params:", { unit, number });
@@ -232,6 +232,11 @@ const Lesson: NextPage = () => {
       },
     ]);
   };
+
+  <LoginScreen
+          loginScreenState={loginScreenState}
+          setLoginScreenState={setLoginScreenState}
+        />
 
   const onFinish = () => {
     setSelectedAnswer(null);
@@ -544,6 +549,7 @@ const CheckAnswer = ({
           </button>
         </div>
       </div>
+      
     </>
   );
 };

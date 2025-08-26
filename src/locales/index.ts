@@ -6,6 +6,12 @@ export type Messages = {
     getStarted: string;
     haveAccount: string;
   };
+  nav: {
+    learn: string;
+    shop: string;
+    profile: string;
+    leaderboards: string;
+  };
   header: {
     siteLanguage: string;
     login: string;
@@ -67,6 +73,12 @@ export const translations: Record<LocaleKey, Messages> = {
       getStarted: 'Get started',
       haveAccount: 'I already have an account',
     },
+    nav: {
+      learn: 'Learn',
+      shop: 'Shop',
+      profile: 'Profile',
+      leaderboards: 'Leaderboards',
+    },
     header: {
       siteLanguage: 'Site language',
       login: 'Login',
@@ -125,6 +137,12 @@ export const translations: Record<LocaleKey, Messages> = {
       title: 'በነጻ፣ አስቂኝ እና ውጤታማ መንገድ ቋንቋ ይማሩ!',
       getStarted: 'ጀምር',
       haveAccount: 'አካውንት አለኝ',
+    },
+    nav: {
+      learn: 'ማማር',
+      shop: 'መደብር',
+      profile: 'መገለጫ',
+      leaderboards: 'መመሪያ ሰሌዳ',
     },
     header: {
       siteLanguage: 'የጣቢያ ቋንቋ',

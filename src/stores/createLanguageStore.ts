@@ -1,4 +1,4 @@
-import languages, { type Language } from "~/utils/languages";
+import languages, { type Language } from "~/utils/local-languages";
 import type { BoundStateCreator } from "~/hooks/useBoundStore";
 
 export type LanguageSlice = {
@@ -6,7 +6,7 @@ export type LanguageSlice = {
   setLanguage: (newLanguage: Language) => void;
 };
 
-const spanishLanguageIndex = 6;
+const spanishLanguageIndex = 2;
 
 export const createLanguageSlice: BoundStateCreator<LanguageSlice> = (set) => ({
   language: languages[spanishLanguageIndex],

@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { useBoundStore } from "~/hooks/useBoundStore";
+import { useTranslation } from "~/hooks/useTranslation";
 
 type BottomBarItem = {
   name: Tab;
@@ -161,10 +162,19 @@ export const useBottomBarItems = () => {
 
 export const BottomBar = ({ selectedTab }: { selectedTab: Tab | null }) => {
   const bottomBarItems = useBottomBarItems();
+  const t = useTranslation();
   return (
     <nav className="fixed bottom-0 left-0 right-0 z-20 border-t-2 border-[#e5e5e5] bg-white md:hidden">
       <ul className="flex h-[88px]">
         {bottomBarItems.map((item) => {
+          const label =
+            item.name === "Learn"
+              ? t.nav.learn
+              : item.name === "Shop"
+              ? t.nav.shop
+              : item.name === "Profile"
+              ? t.nav.profile
+              : t.nav.leaderboards;
           return (
             <li
               key={item.href}
@@ -177,9 +187,10 @@ export const BottomBar = ({ selectedTab }: { selectedTab: Tab | null }) => {
                     ? "rounded-xl border-2 border-[#84d8ff] bg-[#ddf4ff] px-2 py-1"
                     : "px-2 py-1"
                 }
+                aria-label={label}
               >
                 {item.icon}
-                <span className="sr-only">{item.name}</span>
+                <span className="sr-only">{label}</span>
               </Link>
             </li>
           );

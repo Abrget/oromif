@@ -6,10 +6,12 @@ import { LanguageHeader } from "~/components/LanguageHeader";
 import { useLoginScreen, LoginScreen } from "~/components/LoginScreen";
 import { LanguageCarousel } from "~/components/LanguageCarousel";
 import { useTranslation } from "~/hooks/useTranslation";
+import { useBoundStore } from "~/hooks/useBoundStore";
 
 const Home: NextPage = () => {
   const { loginScreenState, setLoginScreenState } = useLoginScreen();
   const t = useTranslation();
+
   return (
     <main
       className="flex min-h-screen flex-col items-center justify-center bg-transparent text-white bg-[url('/newphone.png')] md:bg-[url('/neww.png')] bg-cover bg-center"
@@ -22,6 +24,7 @@ const Home: NextPage = () => {
             {t.home.title}
           </p>
           <div className="mx-auto mt-4 flex w-fit flex-col items-center gap-3">
+
             <Link
               href="/register"
               className="w-full rounded-2xl border-b-4 border-green-700 bg-green-600 px-10 py-3 text-center font-bold uppercase transition hover:border-green-600 hover:bg-green-500 md:min-w-[320px]"

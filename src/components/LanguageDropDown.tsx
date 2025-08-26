@@ -1,7 +1,7 @@
 import { ChevronDownSvg } from "./Svgs";
 import { useState } from "react";
 import languages from "~/utils/languages";
-import { Flag } from "./Flag";
+import { Flag } from "./Local-Flags";
 import { useBoundStore } from "~/hooks/useBoundStore";
 import { useTranslation } from "~/hooks/useTranslation";
 
