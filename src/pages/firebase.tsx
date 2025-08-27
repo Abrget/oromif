@@ -1,12 +1,7 @@
 import { useState } from "react";
-import { db } from "~/lib/firebase";
-import {
-  collection,
-  doc,
-  getDocs,
-  query,
-  setDoc,
-} from "firebase/firestore";
+import { app, rtdb } from "~/lib/firebase";
+import { ref, get, set, child, } from "firebase/database";
+import { getFirestore, collection, getDocs } from "firebase/firestore";
 
 type AnyQuestion = Record<string, any>;
 
@@ -15,14 +10,31 @@ const FirebaseUploader = () => {
   const [status, setStatus] = useState<string>("");
 
   const getNextId = async (): Promise<number> => {
-    const colRef = collection(db, "lessons", "am", "questions");
-    const snap = await getDocs(query(colRef));
+    const baseRef = ref(rtdb, "lessons/am/questions");
+    const snap = await get(baseRef);
+    if (!snap.exists()) return 1;
+    const val = snap.val() as Record<string, unknown>;
     let maxId = 0;
-    snap.forEach((d) => {
-      const n = parseInt(d.id, 10);
-      if (!isNaN(n) && n > maxId) maxId = n;
-    });
+    for (const key of Object.keys(val)) {
+      const n = parseInt(key, 10);
+      if (!Number.isNaN(n) && n > maxId) maxId = n;
+    }
     return maxId + 1;
+  };
+
+  const handleMigrateUnits = async () => {
+    try {
+      setStatus("Fetching units from Firestore…");
+      const fs = getFirestore(app);
+      const snap = await getDocs(collection(fs, "units"));
+      const units = snap.docs.map((d) => d.data());
+      setStatus(`Fetched ${units.length} unit(s). Writing to RTDB…`);
+      await set(ref(rtdb, "units"), units);
+      setStatus(`Done. Migrated ${units.length} unit(s) to RTDB.`);
+    } catch (e: any) {
+      console.error(e);
+      setStatus(`Error: ${e?.message || String(e)}`);
+    }
   };
 
   const handleUpload = async () => {
@@ -36,11 +48,11 @@ const FirebaseUploader = () => {
       let nextId = await getNextId();
 
       setStatus(`Uploading ${items.length} item(s)…`);
-      const colRef = collection(db, "lessons", "am", "questions");
+      const baseRef = ref(rtdb, "lessons/am/questions");
 
       for (const item of items) {
         const idStr = String(nextId++);
-        await setDoc(doc(colRef, idStr), {
+        await set(child(baseRef, idStr), {
           ...item,
           // You can store the id field if you want:
           // id: idStr,
@@ -72,6 +84,12 @@ const FirebaseUploader = () => {
           onClick={handleUpload}
         >
           Upload
+        </button>
+        <button
+          className="rounded bg-green-600 px-4 py-2 font-semibold text-white hover:bg-green-500"
+          onClick={handleMigrateUnits}
+        >
+          Migrate Units (Firestore ➜ RTDB)
         </button>
         <span className="text-sm text-gray-600">{status}</span>
       </div>

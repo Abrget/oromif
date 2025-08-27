@@ -1,6 +1,6 @@
 import type { NextApiRequest, NextApiResponse } from "next";
-import { db } from "~/lib/firebase";
-import { collection, addDoc, getDocs, limit, query, where } from "firebase/firestore";
+import { rtdb } from "~/lib/firebase";
+import { ref, get, set, push } from "firebase/database";
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== "POST") return res.status(405).json({ error: "Method not allowed" });
@@ -33,23 +33,25 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const name = info.name ?? (computedName || null);
     const username = (name || email || provider_id).replace(/\s+/g, "-").toLowerCase();
 
-    // Upsert user in Firestore
-    const q = query(
-      collection(db, "users"),
-      where("provider", "==", provider),
-      where("provider_id", "==", provider_id),
-      limit(1)
-    );
-    const snap = await getDocs(q);
-    if (!snap.empty) {
-      const existing = snap.docs.at(0);
-      if (existing) {
-        const data = existing.data() as { username?: string | null; name?: string | null; email?: string | null };
-        return res.status(200).json({ ok: true, user: { id: existing.id, username: data.username ?? null, name: data.name ?? null, email: data.email ?? null } });
+    // RTDB upsert using an index: usersByProvider/{provider}/{provider_id} -> userId
+    const indexRef = ref(rtdb, `usersByProvider/${provider}/${provider_id}`);
+    const indexSnap = await get(indexRef);
+    if (indexSnap.exists()) {
+      const userId = indexSnap.val() as string;
+      const userRef = ref(rtdb, `users/${userId}/profile`);
+      const userSnap = await get(userRef);
+      if (userSnap.exists()) {
+        const data = userSnap.val() as { username?: string | null; name?: string | null; email?: string | null };
+        return res.status(200).json({ ok: true, user: { id: userId, username: data.username ?? null, name: data.name ?? null, email: data.email ?? null } });
       }
+      // If mapping exists but user missing, fall through to create fresh user
     }
 
-    const newDoc = await addDoc(collection(db, "users"), {
+    // Create new user
+    const usersRef = ref(rtdb, "users");
+    const newUserRef = push(usersRef);
+    const newUserId = email;
+    const userRecord = {
       provider,
       provider_id,
       email,
@@ -57,8 +59,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       name,
       created_at: Date.now(),
       updated_at: Date.now(),
-    });
-    return res.status(200).json({ ok: true, user: { id: newDoc.id, username, name, email } });
+    };
+
+    await set(newUserRef, userRecord);
+    // Write index mapping for fast lookup next time
+    await set(indexRef, newUserId);
+
+    return res.status(200).json({ ok: true, user: { id: newUserId, username, name, email } });
   } catch (err: any) {
     console.error("/api/auth/google error", err);
     return res.status(500).json({ error: "Internal error" });

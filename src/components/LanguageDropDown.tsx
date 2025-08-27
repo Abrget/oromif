@@ -1,6 +1,6 @@
 import { ChevronDownSvg } from "./Svgs";
 import { useState } from "react";
-import languages from "~/utils/languages";
+import languages from "~/utils/local-languages";
 import { Flag } from "./Local-Flags";
 import { useBoundStore } from "~/hooks/useBoundStore";
 import { useTranslation } from "~/hooks/useTranslation";
@@ -8,6 +8,7 @@ import { useTranslation } from "~/hooks/useTranslation";
 export const LanguageDropDown = () => {
   const [languagesShown, setLanguagesShown] = useState(false);
   const { language: currentLanguage, setLanguage } = useBoundStore();
+  const setCurrentLanguage = useBoundStore((x) => x.setCurrentLanguage);
   const t = useTranslation();
 
   return (
@@ -37,12 +38,12 @@ export const LanguageDropDown = () => {
                   tabIndex={0}
                   className="flex items-center gap-3 whitespace-nowrap rounded-xl p-3 hover:bg-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500"
                   onClick={() => {
-                    setLanguage(language);
+                    setCurrentLanguage(language);
                     setLanguagesShown(false);
                   }}
                   onKeyDown={(e) => {
                     if (e.key === "Enter" || e.key === " ") {
-                      setLanguage(language);
+                      setCurrentLanguage(language);
                       setLanguagesShown(false);
                     }
                   }}

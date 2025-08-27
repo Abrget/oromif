@@ -1,7 +1,8 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 import bcrypt from "bcrypt";
-import { db } from "~/lib/firebase";
-import { collection, getDocs, limit, query, where } from "firebase/firestore";
+import { rtdb } from "~/lib/firebase";
+import { ref, query as rQuery, orderByChild, equalTo, limitToFirst, get, set, serverTimestamp } from "firebase/database";
+import { v4 as uuidv4 } from "uuid";
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== "POST") return res.status(405).json({ error: "Method not allowed" });
@@ -17,34 +18,59 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 
   try {
+    type UserRec = { email?: string | null; username?: string | null; name?: string | null; password_hash?: string | null };
     const normIdentity = (email ?? username ?? "").toLowerCase();
 
-    // Try email match first
-    let q = query(collection(db, "users"), where("email", "==", normIdentity), limit(1));
-    let snap = await getDocs(q);
-    if (snap.empty) {
+    // Try email match first in Realtime DB
+    let userId: string | null = null;
+    let data: UserRec | null = null;
+
+    const usersRef = ref(rtdb, "users");
+    let qs = rQuery(usersRef, orderByChild("email"), equalTo(normIdentity), limitToFirst(1));
+    let snap = await get(qs);
+    if (!snap.exists()) {
       // Try username
-      q = query(collection(db, "users"), where("username", "==", normIdentity), limit(1));
-      snap = await getDocs(q);
+      qs = rQuery(usersRef, orderByChild("username"), equalTo(normIdentity), limitToFirst(1));
+      snap = await get(qs);
     }
 
-    if (snap.empty) {
+    if (!snap.exists()) {
       return res.status(401).json({ error: "Invalid credentials" });
     }
 
-    const first = snap.docs.at(0);
-    if (!first) {
-      return res.status(401).json({ error: "Invalid credentials" });
-    }
-    const data = first.data() as { email?: string | null; username?: string | null; name?: string | null; password_hash?: string | null };
-    if (!data.password_hash) {
+    snap.forEach((child) => {
+      if (!userId) {
+        userId = child.key;
+        data = child.val() as UserRec;
+      }
+    });
+
+    if (!userId || !data) {
       return res.status(401).json({ error: "Invalid credentials" });
     }
 
-    const ok = await bcrypt.compare(password, data.password_hash);
+    // Ensure typing
+    const first = { id: userId };
+    const user = data as UserRec;
+    if (!user.password_hash) {
+      return res.status(401).json({ error: "Invalid credentials" });
+    }
+
+    const ok = await bcrypt.compare(password, user.password_hash as string);
     if (!ok) return res.status(401).json({ error: "Invalid credentials" });
 
-    return res.status(200).json({ ok: true, user: { id: first.id, email: data.email ?? null, username: data.username ?? null, name: data.name ?? null } });
+    // Create a new session in RTDB
+    const sessionId = uuidv4();
+    await set(ref(rtdb, `sessions/${sessionId}`), {
+      user_id: first.id,
+      created_at: serverTimestamp(),
+    });
+
+    // Set a cookie (readable by client to mirror into localStorage)
+    const cookie = `session_id=${sessionId}; Path=/; SameSite=Lax; Max-Age=${60 * 60 * 24 * 30}`; // 30 days
+    res.setHeader("Set-Cookie", cookie);
+
+    return res.status(200).json({ ok: true, session_id: sessionId, user: { id: first.id, email: user.email ?? null, username: user.username ?? null, name: user.name ?? null } });
   } catch (err) {
     console.error("/api/auth/login error", err);
     return res.status(500).json({ error: "Internal error" });

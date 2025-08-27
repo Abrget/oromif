@@ -1,6 +1,6 @@
-export type Language = (typeof languages)[number];
+export type LocalLanguage = (typeof locallanguages)[number];
 
-const languages = [
+const locallanguages = [
   
   {
     name: "Oromo",
@@ -26,4 +26,4 @@ const languages = [
  
 ] as const;
 
-export default languages;
+export default locallanguages;

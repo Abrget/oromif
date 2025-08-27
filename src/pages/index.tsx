@@ -7,11 +7,20 @@ import { useLoginScreen, LoginScreen } from "~/components/LoginScreen";
 import { LanguageCarousel } from "~/components/LanguageCarousel";
 import { useTranslation } from "~/hooks/useTranslation";
 import { useBoundStore } from "~/hooks/useBoundStore";
+import { useEffect} from "react";
+import { useRouter } from "next/router";
+
 
 const Home: NextPage = () => {
   const { loginScreenState, setLoginScreenState } = useLoginScreen();
   const t = useTranslation();
-
+  const username = useBoundStore((x) => x.username);
+  const router = useRouter();
+  useEffect(() => {
+    if(username!==null){
+      void router.push("/learn");
+    }
+  }, [username, router]);
   return (
     <main
       className="flex min-h-screen flex-col items-center justify-center bg-transparent text-white bg-[url('/newphone.png')] md:bg-[url('/neww.png')] bg-cover bg-center"

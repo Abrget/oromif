@@ -9,17 +9,21 @@ import _bgSnow from "../../public/bg-snow.svg";
 import type { StaticImageData } from "next/image";
 import Image from "next/image";
 import { useTranslation } from "~/hooks/useTranslation";
+import { useEffect} from "react";
+import { useRouter } from "next/router";
 
 
 const bgSnow = _bgSnow as StaticImageData;
 
 const Register: NextPage = () => {
+  const router = useRouter();
   const setLanguage = useBoundStore((x) => x.setLanguage);
+  const username = useBoundStore((x) => x.username);
   const width = 100;
   const height = width * (19.3171 / 24);
   const t = useTranslation();
   
-  
+
   
   return (
     <main
@@ -40,7 +44,8 @@ const Register: NextPage = () => {
               className={
                 "flex cursor-pointer flex-col items-center gap-4 rounded-2xl border-2 border-b-4 border-gray-400 px-5 py-8 text-xl font-bold hover:bg-gray-300 hover:bg-opacity-20"
               }
-              onClick={() => setLanguage(language)}
+             onClick={() => setLanguage(language)}
+             
             >
               <Flag language={language} />
               <span>{language.name}</span>

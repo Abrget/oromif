@@ -34,8 +34,8 @@ import { useRouter } from "next/router";
 import { LoginScreen, useLoginScreen } from "~/components/LoginScreen";
 import { useBoundStore } from "~/hooks/useBoundStore";
 import type { Tile, TileType, Unit } from "~/utils/units";
-import { db } from "~/lib/firebase";
-import { doc, getDoc, setDoc, updateDoc, increment, collection, getDocs, query, orderBy } from "firebase/firestore";
+import { rtdb } from "~/lib/firebase";
+import { ref, get, update, increment } from "firebase/database";
 import { useTranslation } from "~/hooks/useTranslation";
 
 type TileStatus = "LOCKED" | "ACTIVE" | "COMPLETE";
@@ -235,6 +235,7 @@ const TileTooltip = ({
   const unit = allUnits.find((unit) => unit.unitNumber === unitNumber);
   const activeBackgroundColor = unit?.backgroundColor ?? "bg-green-500";
   const activeTextColor = unit?.textColor ?? "text-green-500";
+  const loggedIn = useBoundStore((x) => x.loggedIn);
 
 
   return (
@@ -284,7 +285,8 @@ const TileTooltip = ({
         </div>
         {status === "ACTIVE" ? (
           <Link
-            href={{ pathname: "/lesson", query: { unit: unitNumber, number: index  } }}
+          href =  {loggedIn ? { pathname: "/lesson", query: { unit: unitNumber, number: index } } : "/learn?sign-up"}
+            
             className={[
               "flex w-full items-center justify-center rounded-xl border-b-4 border-gray-200 bg-white p-3 uppercase",
               activeTextColor,
@@ -301,7 +303,8 @@ const TileTooltip = ({
           </button>
         ) : (
           <Link
-            href={{ pathname: "/lesson", query: { unit: unitNumber, number: index } }}
+         
+            href =  {loggedIn ? { pathname: "/lesson", query: { unit: unitNumber, number: index } } : "/learn?sign-up"}
             className="flex w-full items-center justify-center rounded-xl border-b-4 border-yellow-200 bg-white p-3 uppercase text-yellow-400"
           >
             {t.learn.practiceXP}
@@ -316,6 +319,7 @@ const UnitSection = ({ unit, allUnits }: { unit: Unit; allUnits: Unit[] }): JSX.
   const t = useTranslation();
   const router = useRouter();
  const language = useBoundStore((x) => x.language);
+ const loggedIn = useBoundStore((x) => x.loggedIn);
  console.log(language);
   const [selectedTile, setSelectedTile] = useState<null | number>(null);
 
@@ -327,21 +331,21 @@ const UnitSection = ({ unit, allUnits }: { unit: Unit; allUnits: Unit[] }): JSX.
 
   const closeTooltip = useCallback(() => setSelectedTile(null), []);
 
-  // Firestore-backed progress
+  // RTDB-backed progress
   const username = useBoundStore((x) => x.username) || "guest";
   const [lessonsCompleted, setLessonsCompleted] = useState<number>(0);
 
   useEffect(() => {
     const loadProgress = async () => {
       try {
-        const ref = doc(db, "userProgress", username, language.code);
-        const snap = await getDoc(ref);
+        const progressRef = ref(rtdb, `users/${username}/userProgress/${language.code}`);
+        const snap = await get(progressRef);
         if (snap.exists()) {
-          const data = snap.data() as { lessonsCompleted?: number };
-          setLessonsCompleted(data.lessonsCompleted ?? 0);
+          const data = snap.val() as { lessonsCompleted?: number };
+          setLessonsCompleted(data?.lessonsCompleted ?? 0);
         } else {
-          // initialize minimal progress document lazily
-          await setDoc(ref, { lessonsCompleted: 0, lingots: 0, xp: 0, updated_at: Date.now() }, { merge: true });
+          // lazily initialize minimal progress node
+          await update(progressRef, { lessonsCompleted: 0, lingots: 0, xp: 0, updated_at: Date.now() });
           setLessonsCompleted(0);
         }
       } catch (e) {
@@ -352,25 +356,13 @@ const UnitSection = ({ unit, allUnits }: { unit: Unit; allUnits: Unit[] }): JSX.
   }, [username, language.code]);
 
   const increaseLessonsCompleted = async (delta = 1) => {
-    try {
-      const ref = doc(db, "userProgress", username, language.code);
-      await updateDoc(ref, { lessonsCompleted: increment(delta), updated_at: Date.now() });
-      setLessonsCompleted((v) => v + delta);
-    } catch (e) {
-      // if doc missing, create it
-      const ref = doc(db, "userProgress", username, language.code);
-      await setDoc(ref, { lessonsCompleted: delta, lingots: 0, xp: 0, updated_at: Date.now() }, { merge: true });
-      setLessonsCompleted((v) => v + delta);
-    }
+    const progressRef = ref(rtdb, `users/${username}/userProgress/${language.code}`);
+    await update(progressRef, { lessonsCompleted: increment(delta), updated_at: Date.now() });
+    setLessonsCompleted((v) => v + delta);
   };
   const increaseLingots = async (delta = 1) => {
-    try {
-      const ref = doc(db, "userProgress", username, language.code);
-      await updateDoc(ref, { lingots: increment(delta), updated_at: Date.now() });
-    } catch (e) {
-      const ref = doc(db, "userProgress", username, language.code);
-      await setDoc(ref, { lingots: delta, updated_at: Date.now() }, { merge: true });
-    }
+    const progressRef = ref(rtdb, `users/${username}/userProgress/${language.code}`);
+    await update(progressRef, { lingots: increment(delta), updated_at: Date.now() });
   };
 
   return (
@@ -440,9 +432,14 @@ const UnitSection = ({ unit, allUnits }: { unit: Unit; allUnits: Unit[] }): JSX.
                               tile.type === "fast-forward" &&
                               status === "LOCKED"
                             ) {
-                              void router.push(
-                                `/lesson?fast-forward=${unit.unitNumber}`,
-                              );
+                              if(loggedIn){
+                                void router.push(
+                                  `/lesson?fast-forward=${unit.unitNumber}`,
+                                );
+                              }else{
+                                void router.push("/learn?sign-up");
+                              }
+                             
                               return;
                             }
                             setSelectedTile(i);
@@ -551,22 +548,31 @@ const Learn: NextPage = () => {
   const { loginScreenState, setLoginScreenState } = useLoginScreen();
   const t = useTranslation();
 
-  // Load units from Firestore
+  // Load units from Realtime Database
   const [unitsState, setUnitsState] = useState<Unit[]>([]);
   const [loadingUnits, setLoadingUnits] = useState(true);
   useEffect(() => {
     const loadUnits = async () => {
       try {
-        const q = query(collection(db, "units"), orderBy("unitNumber", "asc"));
-        const snap = await getDocs(q);
-        if (snap.empty) {
+        const unitsRef = ref(rtdb, "units");
+        const snap = await get(unitsRef);
+        const toArray = (val: unknown): Unit[] => {
+          if (!val) return [];
+          if (Array.isArray(val)) return (val as unknown[]).filter(Boolean) as Unit[];
+          return Object.values(val as Record<string, unknown>) as Unit[];
+        };
+        const list = toArray(snap.val()).sort(
+          (a: Unit, b: Unit) => (a?.unitNumber ?? 0) - (b?.unitNumber ?? 0),
+        );
+        if (list.length === 0) {
           // Seed from local data via API, then refetch
           await fetch("/api/seed/units", { method: "POST" });
-          const snap2 = await getDocs(q);
-          const list2: Unit[] = snap2.docs.map((d) => d.data() as Unit);
+          const snap2 = await get(unitsRef);
+          const list2 = toArray(snap2.val()).sort(
+            (a: Unit, b: Unit) => (a?.unitNumber ?? 0) - (b?.unitNumber ?? 0),
+          );
           setUnitsState(list2);
         } else {
-          const list: Unit[] = snap.docs.map((d) => d.data() as Unit);
           setUnitsState(list);
         }
       } catch (e) {

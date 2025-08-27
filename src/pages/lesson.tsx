@@ -1,6 +1,7 @@
 import type { NextPage } from "next";
 import Image from "next/image";
 import Link from "next/link";
+import { v4 as uuidv4 } from "uuid";
 import React, { useEffect, useRef, useState } from "react";
 import {
   AppleSvg,
@@ -18,8 +19,8 @@ import {
 import womanPng from "../../public/woman.png";
 import { useBoundStore } from "~/hooks/useBoundStore";
 import { useRouter } from "next/router";
-import { doc, getDoc, updateDoc, setDoc, increment } from "firebase/firestore";
-import { db } from "../lib/firebase";
+import { ref, get, update, increment } from "firebase/database";
+import { rtdb } from "../lib/firebase";
 import languages from "~/utils/languages";
 import { LoginScreen, useLoginScreen } from "~/components/LoginScreen";
 
@@ -88,9 +89,18 @@ const Lesson: NextPage = () => {
   const { unit, number } = router.query as { unit?: string; number?: string };
   const loggedIn = useBoundStore((x) => x.loggedIn);
   const { loginScreenState, setLoginScreenState } = useLoginScreen();
-  
+  const setUsername = useBoundStore((x) => x.setUsername);
   useEffect(() => {
-   
+     
+    if(!loggedIn){
+      let deviceId = localStorage.getItem("device_id");
+      if (!deviceId) {
+        deviceId = uuidv4(); // Generate new ID
+        localStorage.setItem("device_id", deviceId);
+      }
+      setUsername(deviceId);
+     
+    }
    
     const fastForward = router.query["fast-forward"] as string | undefined;
     if (unit || number) {
@@ -122,12 +132,12 @@ const Lesson: NextPage = () => {
       candidate = (candidate % MAX_QUESTION_ID) + 1;
     }
     const randomId = String(candidate);
-    const docRef = doc(db,"lessons","or","questions",randomId);
-    const docSnap = await getDoc(docRef);
+    const qRef = ref(rtdb, `lessons/${language.code}/questions/${randomId}`);
+    const snap = await get(qRef);
 
-    if (docSnap.exists()) {
+    if (snap.exists()) {
       lastRandomIdRef.current = randomId;
-      const data = docSnap.data() as any;
+      const data = snap.val() as any;
 
       if (data.type === "SELECT_1_OF_3") {
         console.log(data);
@@ -794,28 +804,24 @@ const LessonComplete = ({
   const username = useBoundStore((x) => x.username) || "guest";
   const language = useBoundStore((x) => x.language);
   const saveProgress = async () => {
-    const ref = doc(db, "userProgress", username , language.code);
+    const progressRef = ref(rtdb, `users/${username}/userProgress/${language.code}`);
     const lingotsEarned = isPractice ? 0 : 1;
     const lessonsDelta = isPractice ? 0 : 1;
     try {
-      await updateDoc(ref, {
+      await update(progressRef, {
         xp: increment(correctAnswerCount),
         lingots: increment(lingotsEarned),
         lessonsCompleted: increment(lessonsDelta),
         updated_at: Date.now(),
       });
     } catch (e) {
-      // If updateDoc failed due to missing doc, create it with initial values
-      await setDoc(
-        ref,
-        {
-          xp: correctAnswerCount,
-          lingots: lingotsEarned,
-          lessonsCompleted: lessonsDelta,
-          updated_at: Date.now(),
-        },
-        { merge: true },
-      );
+      // Fallback: if update fails unexpectedly, set absolute values
+      await update(progressRef, {
+        xp: increment(0 + correctAnswerCount),
+        lingots: increment(0 + lingotsEarned),
+        lessonsCompleted: increment(0 + lessonsDelta),
+        updated_at: Date.now(),
+      });
     }
   };
   return (

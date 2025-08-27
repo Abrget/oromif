@@ -17,6 +17,7 @@ import { useBoundStore } from "~/hooks/useBoundStore";
 import { Flag } from "./Local-Flags";
 import type { LoginScreenState } from "./LoginScreen";
 import { LoginScreen } from "./LoginScreen";
+import languages from "~/utils/languages";
 import { useLeaderboardRank } from "~/hooks/useLeaderboard";
 
 export const RightBar = () => {
@@ -25,7 +26,7 @@ export const RightBar = () => {
   const streak = useBoundStore((x) => x.streak);
   const language = useBoundStore((x) => x.language);
   const lessonsCompleted = useBoundStore((x) => x.lessonsCompleted);
-
+  const setLanguage = useBoundStore((x) => x.setLanguage);  
   const [languagesShown, setLanguagesShown] = useState(false);
 
   const [streakShown, setStreakShown] = useState(false);
@@ -61,13 +62,18 @@ export const RightBar = () => {
               <h2 className="px-5 py-3 font-bold uppercase text-gray-400">
                 My courses
               </h2>
+              {languages.map((language) => (
               <button className="flex w-full items-center gap-3 border-t-2 border-gray-300 bg-blue-100 px-5 py-3 text-left font-bold">
                 <Flag language={language} width={45} />
                 <span className="text-blue-500">{language.name}</span>
+                
+                <Link href="/register"/>
               </button>
+              ))}
               <Link
                 className="flex w-full items-center gap-3 rounded-b-2xl border-t-2 border-gray-300 px-5 py-3 text-left font-bold hover:bg-gray-100"
                 href="/register"
+              
               >
                 <span className="flex items-center justify-center rounded-lg border-2 border-gray-400 px-2 text-lg font-bold text-gray-400">
                   +
