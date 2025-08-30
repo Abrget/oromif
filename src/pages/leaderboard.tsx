@@ -122,7 +122,7 @@ const Leaderboard: NextPage = () => {
     if (!loggedIn) {
       void router.push("/");
     }
-  }, [loggedIn, router]);
+  }, []);
 
   const lessonsToUnlockLeaderboard = 10;
   const lessonsRemainingToUnlockLeaderboard =

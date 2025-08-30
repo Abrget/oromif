@@ -38,7 +38,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const indexSnap = await get(indexRef);
     if (indexSnap.exists()) {
       const userId = indexSnap.val() as string;
-      const userRef = ref(rtdb, `users/${userId}/profile`);
+      const userRef = ref(rtdb, `users/${username}`);
       const userSnap = await get(userRef);
       if (userSnap.exists()) {
         const data = userSnap.val() as { username?: string | null; name?: string | null; email?: string | null };
@@ -47,10 +47,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       // If mapping exists but user missing, fall through to create fresh user
     }
 
-    // Create new user
-    const usersRef = ref(rtdb, "users");
-    const newUserRef = push(usersRef);
-    const newUserId = email;
+    
+    const newUserId = username;
     const userRecord = {
       provider,
       provider_id,
@@ -61,10 +59,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       updated_at: Date.now(),
     };
 
-    await set(newUserRef, userRecord);
-    // Write index mapping for fast lookup next time
-    await set(indexRef, newUserId);
-
+    
+    const userRef = ref(rtdb, `users/${newUserId}/profile`);
+    await set(userRef, userRecord);
     return res.status(200).json({ ok: true, user: { id: newUserId, username, name, email } });
   } catch (err: any) {
     console.error("/api/auth/google error", err);

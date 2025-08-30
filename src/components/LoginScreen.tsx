@@ -93,14 +93,22 @@ export const LoginScreen = ({
     }
   }, [loginScreenState, loggedIn, setLoginScreenState]);
 
-  type ApiUser = { id?: number; username?: string | null; name?: string | null; email?: string | null };
+  type ApiUser = { id?: any | null; username?: string | null; name?: string | null; email?: string | null };
   type ApiResponse = { ok: boolean; user?: ApiUser; error?: string };
 
-  const applyUserAndProceed = (user: ApiUser) => {
+  const applyUserAndProceed = (user: ApiUser,type:string) => {
     const derivedName = user.name || user.email?.split("@")[0] || Math.random().toString().slice(2);
     const derivedUsername = (user.username || derivedName).replace(/\s+/g, "-");
-    setUsername(derivedUsername);
-    setName(derivedName);
+
+    if(type==="google"){
+      setUsername(user.id);
+      setName(user.name??derivedName);
+    }else{
+      setUsername(derivedUsername);
+      setName(derivedName);
+    }
+      
+
     logIn();
     void router.push("/learn");
   };
@@ -130,7 +138,7 @@ export const LoginScreen = ({
         });
         const data: ApiResponse = await resp.json();
         if (!resp.ok || !data?.ok) throw new Error(data?.error || "Login failed");
-        applyUserAndProceed(data.user ?? {});
+        applyUserAndProceed(data.user ?? {},"signin");
       } else {
         // SIGNUP
         const resp = await fetch("/api/auth/signup", {
@@ -140,7 +148,7 @@ export const LoginScreen = ({
         });
         const data: ApiResponse = await resp.json();
         if (!resp.ok || !data?.ok) throw new Error(data?.error || "Signup failed");
-        applyUserAndProceed(data.user ?? {});
+        applyUserAndProceed(data.user ?? {},"signup");
       }
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e ?? "Something went wrong"));
@@ -164,7 +172,7 @@ export const LoginScreen = ({
         });
         const data: ApiResponse = await resp.json();
         if (!resp.ok || !data?.ok) throw new Error(data?.error || "Google login failed");
-        applyUserAndProceed(data.user ?? {});
+        applyUserAndProceed(data.user ?? {},"google");
       } catch (e) {
         setError(e instanceof Error ? e.message : "Google login error");
       } finally {

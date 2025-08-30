@@ -1,11 +1,13 @@
 import type { NextPage } from "next";
 import type { ComponentProps } from "react";
-import React from "react";
+
 
 import { BottomBar } from "~/components/BottomBar";
 import { LeftBar } from "~/components/LeftBar";
 import { RightBar } from "~/components/RightBar";
 import { TopBar } from "~/components/TopBar";
+import Lottie from 'lottie-react';
+import { DotLottieReact } from '@lottiefiles/dotlottie-react';
 
 const StreakFreezeSvg = (props: ComponentProps<"svg">) => {
   return (
@@ -387,6 +389,25 @@ const Shop: NextPage = () => {
             <h2 className="mb-5 text-2xl font-bold">Merch</h2>
             <div className="flex border-t-2 border-gray-300 py-5">
               <DuoPlushieSvg className="h-32 w-32 shrink-0 p-4" />
+              <section className="flex flex-col gap-3">
+                <h3 className="text-lg font-bold">Duo Plushie</h3>
+                <p className="text-sm text-gray-500">
+                  {`Celebrate Duolingo's 10 year anniversary with a new exclusive Duo plushie!`}
+                </p>
+                <button className="flex w-fit items-center gap-1 rounded-2xl border-2 border-b-4 border-gray-300 bg-white px-4 py-3 text-sm font-bold uppercase text-red-500">
+                  $29.99
+                </button>
+              </section>
+            </div>
+          </div>
+          <div className="py-7">
+            <h2 className="mb-5 text-2xl font-bold">Merch</h2>
+            <div className="flex border-t-2 border-gray-300 py-5">
+            <DotLottieReact className="h-40"
+      src="https://lottie.host/fa5310f5-52dd-450b-81ad-145fd82c2217/VOEGMZlpz2.lottie"
+      loop
+      autoplay
+    />
               <section className="flex flex-col gap-3">
                 <h3 className="text-lg font-bold">Duo Plushie</h3>
                 <p className="text-sm text-gray-500">

@@ -3,6 +3,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { v4 as uuidv4 } from "uuid";
 import React, { useEffect, useRef, useState } from "react";
+import dynamic from "next/dynamic";
 import {
   AppleSvg,
   BigCloseSvg,
@@ -23,6 +24,14 @@ import { ref, get, update, increment } from "firebase/database";
 import { rtdb } from "../lib/firebase";
 import languages from "~/utils/languages";
 import { LoginScreen, useLoginScreen } from "~/components/LoginScreen";
+import Lottie from 'lottie-react';
+import { DotLottieReact } from '@lottiefiles/dotlottie-react';
+
+// Dynamically import Lottie Player to avoid SSR issues
+const LottiePlayer = dynamic(() =>
+  import("@lottiefiles/react-lottie-player").then((m) => m.Player),
+  { ssr: false }
+);
 
 // Problem type definitions
 type SelectProblem = {
@@ -40,6 +49,7 @@ type WriteProblem = {
 };
 
 type Problem = SelectProblem | WriteProblem;
+
 
 const defaultLessonProblem1: SelectProblem = {
   type: "SELECT_1_OF_3",
@@ -92,15 +102,7 @@ const Lesson: NextPage = () => {
   const setUsername = useBoundStore((x) => x.setUsername);
   useEffect(() => {
      
-    if(!loggedIn){
-      let deviceId = localStorage.getItem("device_id");
-      if (!deviceId) {
-        deviceId = uuidv4(); // Generate new ID
-        localStorage.setItem("device_id", deviceId);
-      }
-      setUsername(deviceId);
-     
-    }
+   
    
     const fastForward = router.query["fast-forward"] as string | undefined;
     if (unit || number) {
@@ -132,7 +134,7 @@ const Lesson: NextPage = () => {
       candidate = (candidate % MAX_QUESTION_ID) + 1;
     }
     const randomId = String(candidate);
-    const qRef = ref(rtdb, `lessons/${language.code}/questions/${randomId}`);
+    const qRef = ref(rtdb, `lessons/${language.code}/questions/new/${randomId}`);
     const snap = await get(qRef);
 
     if (snap.exists()) {
@@ -144,7 +146,7 @@ const Lesson: NextPage = () => {
         // transform icon strings -> components
         const raw = data as {
           question: string;
-          answers: { icon: keyof typeof iconMap; name: string }[];
+          answers: { icon?: keyof typeof iconMap; name: string; lottieUrl?: string }[];
           correctAnswer: number;
         };
 
@@ -153,7 +155,15 @@ const Lesson: NextPage = () => {
           question: raw.question,
           answers: raw.answers.map((ans) => ({
             name: ans.name,
-            icon: iconMap[ans.icon] ?? <></>,
+            icon: ans.lottieUrl ? (
+              <DotLottieReact
+                src='https://lottie.host/fa5310f5-52dd-450b-81ad-145fd82c2217/VOEGMZlpz2.lottie'                autoplay
+                loop
+                style={{ height: 96, width: 96, margin: "0 auto" }}
+              />
+            ) : (
+              iconMap[ans.icon ?? ""] ?? <></>
+            ),
           })),
           correctAnswer: raw.correctAnswer,
         };

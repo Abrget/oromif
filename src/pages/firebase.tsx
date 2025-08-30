@@ -10,7 +10,7 @@ const FirebaseUploader = () => {
   const [status, setStatus] = useState<string>("");
 
   const getNextId = async (): Promise<number> => {
-    const baseRef = ref(rtdb, "lessons/am/questions");
+    const baseRef = ref(rtdb, "lessons/or/questions/new");
     const snap = await get(baseRef);
     if (!snap.exists()) return 1;
     const val = snap.val() as Record<string, unknown>;
@@ -48,7 +48,7 @@ const FirebaseUploader = () => {
       let nextId = await getNextId();
 
       setStatus(`Uploading ${items.length} item(s)…`);
-      const baseRef = ref(rtdb, "lessons/am/questions");
+      const baseRef = ref(rtdb, "lessons/or/questions/new");
 
       for (const item of items) {
         const idStr = String(nextId++);
