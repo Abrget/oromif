@@ -1,7 +1,7 @@
 import type { NextPage } from "next";
 import Image from "next/image";
+
 import Link from "next/link";
-import { v4 as uuidv4 } from "uuid";
 import React, { useEffect, useRef, useState } from "react";
 import dynamic from "next/dynamic";
 import {
@@ -9,6 +9,8 @@ import {
   BigCloseSvg,
   BoySvg,
   CloseSvg,
+  CowSvg,
+  SheepSvg,
   DoneSvg,
   LessonFastForwardEndFailSvg,
   LessonFastForwardEndPassSvg,
@@ -18,14 +20,12 @@ import {
   WomanSvg,
 } from "~/components/Svgs";
 import womanPng from "../../public/woman.png";
+
 import { useBoundStore } from "~/hooks/useBoundStore";
 import { useRouter } from "next/router";
 import { ref, get, update, increment } from "firebase/database";
 import { rtdb } from "../lib/firebase";
-import languages from "~/utils/languages";
 import { LoginScreen, useLoginScreen } from "~/components/LoginScreen";
-import Lottie from 'lottie-react';
-import { DotLottieReact } from '@lottiefiles/dotlottie-react';
 
 // Dynamically import Lottie Player to avoid SSR issues
 const LottiePlayer = dynamic(() =>
@@ -50,12 +50,11 @@ type WriteProblem = {
 
 type Problem = SelectProblem | WriteProblem;
 
-
 const defaultLessonProblem1: SelectProblem = {
   type: "SELECT_1_OF_3",
   question: `Which one of these is " apple"?`,
   answers: [
-    { icon: <AppleSvg />, name: "l manzana" },
+    { icon: <CowSvg />, name: "l manzana" },
     { icon: <BoySvg />, name: "el niño" },
     { icon: <WomanSvg />, name: "la mujer" },
   ],
@@ -134,7 +133,7 @@ const Lesson: NextPage = () => {
       candidate = (candidate % MAX_QUESTION_ID) + 1;
     }
     const randomId = String(candidate);
-    const qRef = ref(rtdb, `lessons/${language.code}/questions/new/${randomId}`);
+    const qRef = ref(rtdb, `lessons/${language.code}/questions/1/1/${randomId}`);
     const snap = await get(qRef);
 
     if (snap.exists()) {
@@ -146,24 +145,18 @@ const Lesson: NextPage = () => {
         // transform icon strings -> components
         const raw = data as {
           question: string;
-          answers: { icon?: keyof typeof iconMap; name: string; lottieUrl?: string }[];
+          answers: { icon: keyof typeof iconMap; name: string }[];
           correctAnswer: number;
         };
 
         const updatedLessonProblem1: SelectProblem = {
           type: "SELECT_1_OF_3",
           question: raw.question,
+         
+
           answers: raw.answers.map((ans) => ({
             name: ans.name,
-            icon: ans.lottieUrl ? (
-              <DotLottieReact
-                src='https://lottie.host/fa5310f5-52dd-450b-81ad-145fd82c2217/VOEGMZlpz2.lottie'                autoplay
-                loop
-                style={{ height: 96, width: 96, margin: "0 auto" }}
-              />
-            ) : (
-              iconMap[ans.icon ?? ""] ?? <></>
-            ),
+            icon: iconMap[ans.icon] ?? <></>,
           })),
           correctAnswer: raw.correctAnswer,
         };
