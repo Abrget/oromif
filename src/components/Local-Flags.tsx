@@ -1,7 +1,7 @@
 import type { StaticImageData } from "next/image";
 import _flagsSvg from "../../public/flags.svg";
 
-import type { Language } from "~/utils/local-languages";
+import type { LocalLanguage } from "~/utils/local-languages";
 
 const flagsSvg = _flagsSvg as StaticImageData;
 
@@ -9,7 +9,7 @@ export const Flag = ({
   language,
    width = 84,
 }: {
-  language: Language;
+  language: LocalLanguage;
   width?: number;
 }) => {
   const height = width * (19.3171 / 24);
